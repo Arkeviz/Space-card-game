@@ -1,0 +1,21 @@
+{
+  "name": "@space/server",
+  "type": "module",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "node --watch src/main.ts",
+    "start": "node src/main.ts",
+    "test": "vitest run --passWithNoTests",
+    "typecheck": "node ../../node_modules/typescript-7/bin/tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@fastify/websocket": "^11.3.1",
+    "@space/engine": "workspace:*",
+    "@space/protocol": "workspace:*",
+    "fastify": "^5.12.5"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.18.0"
+  }
+}
