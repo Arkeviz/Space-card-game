@@ -1,0 +1,13 @@
+{
+  "name": "@space/engine",
+  "type": "module",
+  "version": "0.0.0",
+  "private": true,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "node ../../node_modules/typescript-7/bin/tsc -p tsconfig.json"
+  }
+}
