@@ -1,0 +1,13 @@
+minimumReleaseAgeExcludePrune: true
+
+trustPolicy: no-downgrade
+# Транзитивная зависимость vitest. 3.2.2 опубликована тем же мейнтейнером (jkoops), что и 3.2.0,
+# но без provenance-аттестации. Исключение только для этой версии.
+trustPolicyExclude:
+  - why-is-node-running@3.2.2
+
+shellEmulator: true
+
+packages:
+  - apps/*
+  - packages/*
