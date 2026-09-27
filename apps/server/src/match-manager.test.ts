@@ -204,9 +204,9 @@ describe('matchManager: таймауты', () => {
 
     manager.submitCommand(room, 0, 'concede', { type: COMMAND_TYPE.CONCEDE })
     expect(room.state!.winner).toBe(1)
-    const turnAfterForfeit = room.state!.turn
+    const turnAfterConcede = room.state!.turn
 
     vi.advanceTimersByTime(5000)
-    expect(room.state!.turn).toBe(turnAfterForfeit)
+    expect(room.state!.turn).toBe(turnAfterConcede)
   })
 })
