@@ -77,4 +77,8 @@ Fastify + `@fastify/websocket`, один маршрут `/ws`. `match-manager.ts
 
 Сервер авторитетен: клиент шлёт только команды-намерения (`{ type: 'command', commandId, command }`), сервер отвечает отправителю `ack`/`reject` и рассылает обоим игрокам персональный `update` (`version`, `events`, `view`, `legalActions`) через `redact`/`redactEvents`. `sync` отдаёт полный снимок без событий - для восстановления после переподключения. Схемы входящих сообщений - в `@space/protocol` (`parseClientMessage`, `parseCommand`); исходящие типизированы, но не проверяются в рантайме - сервер доверенный.
 
-Клиентская часть синхронизации (модуль `connection` на `useWebSocket`, `serverView`/`renderedView`, очередь анимаций) пока не реализована - это следующий этап.
+### Клиент: подключение (`apps/client/src/modules/connection`)
+
+Обёртка над `useWebSocket` из VueUse по протоколу `@space/protocol`: создание/вход в матч по коду, переподключение по токену из `sessionStorage`, команды с ack/reject, heartbeat. `lib/connection-state.ts` (класс `ConnectionState`) отделён от Vue и WebSocket - юнит-тестируется напрямую, как `MatchManager` на сервере; `composables/useGameConnection.ts` - тонкая обвязка. Подключение заводится один раз в `app/entry.ts` (`provideGameConnection`) и достаётся где угодно через `useGameConnection()` (Vue `provide`/`inject`). Подробности - в [apps/client/README.md](apps/client/README.md).
+
+Настоящее игровое поле (CardLayer, GSAP-анимации через AnimationDirector, `serverView`/`renderedView`) пока не реализовано - `pages/match/MatchPage.vue` сейчас временная страница для сквозной проверки протокола (список руки/Торгового ряда текстом, кнопки по `legalActions`), без вёрстки и анимаций.
