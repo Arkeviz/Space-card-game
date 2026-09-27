@@ -11,7 +11,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `apps/server` - Fastify + `@fastify/websocket`.
 - `apps/client` - Vue 3 + Vite, структура по [FEOD](https://feod.zede169778.workers.dev/).
 
-У каждого пакета/приложения свой README с деталями конкретно по нему: [apps/client/README.md](apps/client/README.md), [packages/engine/README.md](packages/engine/README.md), [packages/protocol/README.md](packages/protocol/README.md).
+У каждого пакета/приложения свой README с деталями конкретно по нему: [apps/client/README.md](apps/client/README.md), [apps/server/README.md](apps/server/README.md), [packages/engine/README.md](packages/engine/README.md), [packages/protocol/README.md](packages/protocol/README.md).
 
 ## Команды
 
@@ -63,12 +63,18 @@ pnpm --filter @space/client build                    # vue-tsc --noEmit && vite 
 - `game/redact.ts` (`redact`, `redactEvents`) убирает скрытую информацию (содержимое руки соперника, порядок колоды, `rngState`) перед отправкой `GameState`/событий конкретному игроку. **Никогда не отправлять клиенту необрезанный `GameState` или события.**
 - `data/cards.ts` - каталог карт (`CARDS`, `getCard`); значения записаны по памяти и пока не сверены с физической игрой.
 
+Отдельно от обычных игровых команд есть `FORFEIT` (сдаться): единственная команда, которую `apply` принимает независимо от того, чей сейчас ход и открыт ли prompt. Используется сервером для форфита по таймауту отключения. В `legalActions` не входит - не обычное игровое действие.
+
 Все строковые «перечисления» (`COMMAND_TYPE`, `EVENT_TYPE`, `COMMAND_ERROR`, `FACTION`, `CARD_KIND`, `ABILITY_KIND`, `RESOURCE`, `SCRAP_ZONE`, `EFFECT_TYPE`, `PROMPT_KIND`) - объекты `as const` в `types/constants.ts`, используются как `typeof COMMAND_TYPE.PLAY_CARD` в дискриминированных union-типах и как значения везде в рантайме - никогда не голые строковые литералы. Настоящий `enum` намеренно не используется (`erasableSyntaxOnly`). Полное соглашение и то, какие поля пока остаются литералами, - в [packages/engine/README.md](packages/engine/README.md).
 
 ### Клиент (`apps/client`)
 
 Структура по FEOD: `app` (запуск/роутер/интеграции) → `pages` (тонкие, по одной на маршрут) → `modules` (бизнес-логика, доступ только через public API модуля - `index.ts`) → `common` (нейтральные мелкие сущности без barrel-файлов) → `global` (декларации окружения, никогда не импортируются напрямую). Импорт однонаправленный (`common → modules → pages → app`), проверяется правилами `no-restricted-imports` в корневом [eslint.config.js](eslint.config.js), которые генерируются по слоям из объекта `forbiddenByLayer`. Папки модулей и страниц - `kebab-case`; файлы Vue-компонентов - `PascalCase.vue`. Полное обоснование и примеры - в [apps/client/README.md](apps/client/README.md).
 
-### Синхронизация клиент/сервер (запланирована, ещё не реализована)
+### Сервер и матчи (`apps/server`)
 
-Задуманная схема (пока не код): сервер авторитетен; клиент шлёт только команды-намерения; сервер рассылает каждому игроку урезанные сообщения `update` (`version`, `events`, `view`, `legalActions`), а отправителю ещё `ack`/`reject`. Клиент хранит `serverView` (истина) и `renderedView` (то, что на экране), проигрывает события через очередь анимаций и сверяется с `serverView`, когда очередь опустела. Пока не реализовано - в `apps/server` сейчас есть только heartbeat (ping/pong).
+Fastify + `@fastify/websocket`, один маршрут `/ws`. `match-manager.ts` (`Room`, `MatchManager`) хранит комнаты в памяти процесса: код приглашения на 6 символов, токен для переподключения, таймаут хода (автодействие: `SKIP`, если открыт prompt, иначе `END_TURN`) и таймаут отключения (форфит через `FORFEIT`). Разбор входящих WS-сообщений и маршрутизация в `MatchManager` - в `app.ts`. Полный протокол сообщений, поток матча и известные ограничения (нет персистентности, нет сборки мусора для заброшенных комнат) - в [apps/server/README.md](apps/server/README.md).
+
+Сервер авторитетен: клиент шлёт только команды-намерения (`{ type: 'command', commandId, command }`), сервер отвечает отправителю `ack`/`reject` и рассылает обоим игрокам персональный `update` (`version`, `events`, `view`, `legalActions`) через `redact`/`redactEvents`. `sync` отдаёт полный снимок без событий - для восстановления после переподключения. Схемы входящих сообщений - в `@space/protocol` (`parseClientMessage`, `parseCommand`); исходящие типизированы, но не проверяются в рантайме - сервер доверенный.
+
+Клиентская часть синхронизации (модуль `connection` на `useWebSocket`, `serverView`/`renderedView`, очередь анимаций) пока не реализована - это следующий этап.
