@@ -7,9 +7,15 @@ import { MatchManager } from './match-manager.ts'
 /** Заглушка WebSocket: не поднимает реальную сеть, просто копит отправленные сообщения. */
 class FakeSocket {
   readyState = 1
+  closed = false
   readonly sent: ServerMessage[] = []
   send(data: string): void {
     this.sent.push(JSON.parse(data))
+  }
+
+  close(): void {
+    this.closed = true
+    this.readyState = 3
   }
 
   lastOf<T extends ServerMessage['type']>(type: T): Extract<ServerMessage, { type: T }> {
@@ -134,7 +140,7 @@ describe('matchManager: таймауты', () => {
     const socket1 = fakeSocket()
     manager.joinMatch(socket1, room.code)
 
-    manager.handleDisconnect(room, 0)
+    manager.handleDisconnect(room, 0, socket0)
     expect(room.state!.winner).toBeNull()
 
     vi.advanceTimersByTime(999)
@@ -150,7 +156,7 @@ describe('matchManager: таймауты', () => {
     const { room } = manager.createMatch(socket0)
     manager.joinMatch(fakeSocket(), room.code)
 
-    manager.handleDisconnect(room, 0)
+    manager.handleDisconnect(room, 0, socket0)
     vi.advanceTimersByTime(500)
 
     const reconnectSocket = fakeSocket()
@@ -168,6 +174,37 @@ describe('matchManager: таймауты', () => {
     manager.joinMatch(fakeSocket(), room.code)
     const result = manager.reconnect(fakeSocket(), room.id, 'чужой-токен')
     expect(result).toEqual({ error: MATCH_ERROR.INVALID_TOKEN })
+  })
+
+  it('переподключение при живом старом сокете закрывает его, а не молча подменяет', () => {
+    const manager = new MatchManager()
+    const socket0 = fakeSocket()
+    const { room } = manager.createMatch(socket0)
+    manager.joinMatch(fakeSocket(), room.code)
+
+    const hijackSocket = fakeSocket()
+    const result = manager.reconnect(hijackSocket, room.id, room.seats[0].token)
+    expect('error' in result).toBe(false)
+
+    expect((socket0 as unknown as FakeSocket).closed).toBe(true)
+    expect(room.seats[0].socket).toBe(hijackSocket)
+  })
+
+  it('close устаревшего (перехваченного) сокета не отключает место у нового', () => {
+    const manager = new MatchManager({ disconnectTimeoutMs: 1000 })
+    const socket0 = fakeSocket()
+    const { room } = manager.createMatch(socket0)
+    manager.joinMatch(fakeSocket(), room.code)
+
+    const newSocket = fakeSocket()
+    manager.reconnect(newSocket, room.id, room.seats[0].token)
+
+    // Устаревшее событие close от старого сокета (пришло бы в app.ts асинхронно) - место занял уже новый сокет.
+    manager.handleDisconnect(room, 0, socket0)
+    expect(room.seats[0].socket).toBe(newSocket)
+
+    vi.advanceTimersByTime(2000)
+    expect(room.state!.winner).toBeNull()
   })
 
   it('игрок не действует в срок: END_TURN применяется автоматически', () => {

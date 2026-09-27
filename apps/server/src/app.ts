@@ -65,7 +65,7 @@ export function buildApp(matchManagerOptions?: MatchManagerOptions) {
 
       socket.on('close', () => {
         if (room && seat !== null)
-          manager.handleDisconnect(room, seat)
+          manager.handleDisconnect(room, seat, socket)
       })
     })
   })

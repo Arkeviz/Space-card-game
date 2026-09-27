@@ -115,6 +115,11 @@ export class MatchManager {
       clearTimeout(s.disconnectTimer)
       s.disconnectTimer = null
     }
+    // Место мог всё ещё держать старый сокет (например, вкладка того же браузера случайно переподключилась
+    // по чужому токену). Закрываем его: иначе сервер продолжал бы слать ему сообщения вместо нового сокета,
+    // а сам старый сокет не знал бы, что потерял место.
+    if (s.socket && s.socket !== socket)
+      s.socket.close()
     s.socket = socket
     this.sync(room, seat)
     return { room, seat }
@@ -152,9 +157,15 @@ export class MatchManager {
     this.scheduleTurnTimeout(room)
   }
 
-  /** Сокет закрылся: если партия ещё идёт, через disconnectTimeoutMs соперник побеждает (команда CONCEDE от лица отключившегося). */
-  handleDisconnect(room: Room, seat: PlayerId): void {
+  /**
+   * Сокет закрылся: если партия ещё идёт, через disconnectTimeoutMs соперник побеждает (команда CONCEDE
+   * от лица отключившегося). socket сверяется с текущим: место мог уже перехватить более новый сокет
+   * (см. reconnect) - тогда это устаревшее событие close, и его нужно игнорировать.
+   */
+  handleDisconnect(room: Room, seat: PlayerId, socket: WebSocket): void {
     const s = room.seats[seat]
+    if (s.socket !== socket)
+      return
     s.socket = null
     if (!room.state || room.state.winner !== null)
       return
