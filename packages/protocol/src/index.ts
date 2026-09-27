@@ -1,1 +1,1 @@
-export { isPing, PingSchema, PongSchema } from './heartbeat.ts'
+export { HEARTBEAT, isPing, PingSchema, PongSchema } from './messages/heartbeat.ts'

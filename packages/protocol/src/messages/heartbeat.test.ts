@@ -1,11 +1,10 @@
-import * as v from 'valibot'
 import { describe, expect, it } from 'vitest'
-import { PingSchema, PongSchema } from './heartbeat.ts'
+import { HEARTBEAT, isPing } from './heartbeat.ts'
 
 describe('heartbeat', () => {
-  it('принимает только ping и pong', () => {
-    expect(v.is(PingSchema, 'ping')).toBe(true)
-    expect(v.is(PingSchema, 'pong')).toBe(false)
-    expect(v.is(PongSchema, 'pong')).toBe(true)
+  it('принимает только ping', () => {
+    expect(isPing(HEARTBEAT.PING)).toBe(true)
+    expect(isPing(HEARTBEAT.PONG)).toBe(false)
+    expect(isPing(42)).toBe(false)
   })
 })

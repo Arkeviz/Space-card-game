@@ -1,7 +1,12 @@
 import * as v from 'valibot'
 
-/** Heartbeat useWebSocket: клиент шлёт `ping`, сервер отвечает `pong`. */
-export const PingSchema = v.literal('ping')
-export const PongSchema = v.literal('pong')
+/** Heartbeat useWebSocket: клиент шлёт PING, сервер отвечает PONG. */
+export const HEARTBEAT = {
+  PING: 'ping',
+  PONG: 'pong',
+} as const
 
-export const isPing = (value: unknown): value is 'ping' => v.is(PingSchema, value)
+export const PingSchema = v.literal(HEARTBEAT.PING)
+export const PongSchema = v.literal(HEARTBEAT.PONG)
+
+export const isPing = (value: unknown): value is typeof HEARTBEAT.PING => v.is(PingSchema, value)
