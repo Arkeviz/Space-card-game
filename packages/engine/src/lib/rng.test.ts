@@ -20,3 +20,13 @@ describe('createRng', () => {
     expect(createRng(7).shuffle(source)).toEqual(shuffled)
   })
 })
+
+describe('createRng state', () => {
+  it('createRng(state) продолжает последовательность с того же места', () => {
+    const original = createRng(5)
+    original.next()
+    original.next()
+    const resumed = createRng(original.state())
+    expect(Array.from({ length: 4 }, () => resumed.next())).toEqual(Array.from({ length: 4 }, () => original.next()))
+  })
+})

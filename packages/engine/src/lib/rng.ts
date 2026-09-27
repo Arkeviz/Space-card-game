@@ -3,8 +3,10 @@ export interface Rng {
   next: () => number
   /** Целое число в диапазоне [0, max). */
   int: (max: number) => number
-  /** Перемешивает копию массива (Fisher–Yates). */
+  /** Перемешивает копию массива (Fisher-Yates). */
   shuffle: <T>(items: readonly T[]) => T[]
+  /** Текущее внутреннее состояние: createRng(state) продолжает ту же последовательность. */
+  state: () => number
 }
 
 /** Детерминированный генератор (mulberry32): один сид - одна последовательность. */
@@ -30,5 +32,5 @@ export function createRng(seed: number): Rng {
     return result
   }
 
-  return { next, int, shuffle }
+  return { next, int, shuffle, state: () => state }
 }
