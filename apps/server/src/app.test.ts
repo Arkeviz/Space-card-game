@@ -1,3 +1,4 @@
+import { HEARTBEAT } from '@space/protocol'
 import { afterEach, describe, expect, it } from 'vitest'
 import { buildApp } from './app.ts'
 
@@ -14,8 +15,8 @@ describe('ws heartbeat', () => {
     const reply = new Promise<string>((resolve) => {
       socket.once('message', data => resolve(data.toString()))
     })
-    socket.send('ping')
-    expect(await reply).toBe('pong')
+    socket.send(HEARTBEAT.PING)
+    expect(await reply).toBe(HEARTBEAT.PONG)
     socket.terminate()
   })
 })
