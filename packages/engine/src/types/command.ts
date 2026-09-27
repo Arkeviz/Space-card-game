@@ -13,6 +13,7 @@ export type Command
     | { type: typeof COMMAND_TYPE.CHOOSE_CARD, promptId: number, cardId: string }
     | { type: typeof COMMAND_TYPE.SKIP, promptId: number }
     | { type: typeof COMMAND_TYPE.END_TURN }
+    | { type: typeof COMMAND_TYPE.FORFEIT }
 
 export type ApplyResult
   = | { ok: true, state: GameState, events: GameEvent[] }

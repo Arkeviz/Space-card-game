@@ -164,6 +164,13 @@ function attackPlayer(ctx: Ctx, player: PlayerId, amount: number): CommandError 
   return null
 }
 
+function forfeit(ctx: Ctx, player: PlayerId): CommandError | null {
+  const winner = other(player)
+  ctx.state.winner = winner
+  ctx.events.push({ type: EVENT_TYPE.GAME_OVER, winner })
+  return null
+}
+
 function endTurn(ctx: Ctx, player: PlayerId): CommandError | null {
   const { state } = ctx
   const p = state.players[player]
@@ -245,6 +252,7 @@ function execute(ctx: Ctx, player: PlayerId, command: Command): CommandError | n
     case COMMAND_TYPE.ATTACK_PLAYER: return attackPlayer(ctx, player, command.amount)
     case COMMAND_TYPE.ATTACK_BASE: return attackBase(ctx, player, command.cardId)
     case COMMAND_TYPE.END_TURN: return endTurn(ctx, player)
+    case COMMAND_TYPE.FORFEIT: return forfeit(ctx, player)
     case COMMAND_TYPE.CHOOSE_OPTION:
     case COMMAND_TYPE.CHOOSE_CARD:
     case COMMAND_TYPE.SKIP: return answerPrompt(ctx, player, command)
@@ -259,18 +267,21 @@ export function apply(state: GameState, player: PlayerId, command: Command): App
   if (state.winner !== null)
     return { ok: false, error: COMMAND_ERROR.GAME_OVER }
 
-  const isPromptCommand = PROMPT_COMMANDS.has(command.type)
-  if (state.prompt) {
-    if (!isPromptCommand)
-      return { ok: false, error: COMMAND_ERROR.PROMPT_PENDING }
-    if (state.prompt.player !== player)
-      return { ok: false, error: COMMAND_ERROR.NOT_YOUR_TURN }
-  }
-  else {
-    if (isPromptCommand)
-      return { ok: false, error: COMMAND_ERROR.NO_PROMPT }
-    if (player !== state.currentPlayer)
-      return { ok: false, error: COMMAND_ERROR.NOT_YOUR_TURN }
+  // FORFEIT - единственная команда, доступная независимо от того, чей ход и открыт ли prompt.
+  if (command.type !== COMMAND_TYPE.FORFEIT) {
+    const isPromptCommand = PROMPT_COMMANDS.has(command.type)
+    if (state.prompt) {
+      if (!isPromptCommand)
+        return { ok: false, error: COMMAND_ERROR.PROMPT_PENDING }
+      if (state.prompt.player !== player)
+        return { ok: false, error: COMMAND_ERROR.NOT_YOUR_TURN }
+    }
+    else {
+      if (isPromptCommand)
+        return { ok: false, error: COMMAND_ERROR.NO_PROMPT }
+      if (player !== state.currentPlayer)
+        return { ok: false, error: COMMAND_ERROR.NOT_YOUR_TURN }
+    }
   }
 
   // Состояние - чистый JSON (его же сервер сохраняет и отправляет), поэтому клонируем через JSON.

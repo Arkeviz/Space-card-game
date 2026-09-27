@@ -69,6 +69,8 @@ export const COMMAND_TYPE = {
   CHOOSE_CARD: 'CHOOSE_CARD',
   SKIP: 'SKIP',
   END_TURN: 'END_TURN',
+  /** Сдаться. Работает независимо от того, чей сейчас ход или открыт ли prompt (в отличие от всех остальных команд). */
+  FORFEIT: 'FORFEIT',
 } as const
 export type CommandType = ValueOf<typeof COMMAND_TYPE>
 
