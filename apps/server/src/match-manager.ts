@@ -53,7 +53,7 @@ type SeatResult = { room: Room, seat: PlayerId } | { error: MatchError }
 
 /**
  * Комнаты матчей в памяти: создание/вход по коду, переподключение, приём команд,
- * таймаут хода (автодействие) и таймаут отключения (форфит). Матчи и их лог никуда не сохраняются -
+ * таймаут хода (автодействие) и таймаут отключения (сдача). Матчи и их лог никуда не сохраняются -
  * при перезапуске сервера все текущие партии теряются.
  */
 export class MatchManager {
@@ -152,7 +152,7 @@ export class MatchManager {
     this.scheduleTurnTimeout(room)
   }
 
-  /** Сокет закрылся: если партия ещё идёт, через disconnectTimeoutMs соперник побеждает форфитом. */
+  /** Сокет закрылся: если партия ещё идёт, через disconnectTimeoutMs соперник побеждает (команда CONCEDE от лица отключившегося). */
   handleDisconnect(room: Room, seat: PlayerId): void {
     const s = room.seats[seat]
     s.socket = null
@@ -163,7 +163,7 @@ export class MatchManager {
       s.disconnectTimer = null
       if (!room.state || room.state.winner !== null)
         return
-      this.submitCommand(room, seat, `forfeit-${Date.now()}`, { type: COMMAND_TYPE.FORFEIT })
+      this.submitCommand(room, seat, `concede-${Date.now()}`, { type: COMMAND_TYPE.CONCEDE })
     }, this.disconnectTimeoutMs)
   }
 

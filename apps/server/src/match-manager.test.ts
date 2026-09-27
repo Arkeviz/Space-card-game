@@ -127,7 +127,7 @@ describe('matchManager: таймауты', () => {
     return () => vi.useRealTimers()
   })
 
-  it('отключение без переподключения: соперник побеждает форфитом по истечении таймаута', () => {
+  it('отключение без переподключения: по истечении таймаута отключившийся сдаётся, соперник побеждает', () => {
     const manager = new MatchManager({ disconnectTimeoutMs: 1000 })
     const socket0 = fakeSocket()
     const { room } = manager.createMatch(socket0)
@@ -144,7 +144,7 @@ describe('matchManager: таймауты', () => {
     expect(room.state!.winner).toBe(1)
   })
 
-  it('переподключение до истечения таймаута отменяет форфит', () => {
+  it('переподключение до истечения таймаута отменяет сдачу', () => {
     const manager = new MatchManager({ disconnectTimeoutMs: 1000 })
     const socket0 = fakeSocket()
     const { room } = manager.createMatch(socket0)
@@ -202,7 +202,7 @@ describe('matchManager: таймауты', () => {
     const { room } = manager.createMatch(socket0)
     manager.joinMatch(fakeSocket(), room.code)
 
-    manager.submitCommand(room, 0, 'forfeit', { type: COMMAND_TYPE.FORFEIT })
+    manager.submitCommand(room, 0, 'concede', { type: COMMAND_TYPE.CONCEDE })
     expect(room.state!.winner).toBe(1)
     const turnAfterForfeit = room.state!.turn
 

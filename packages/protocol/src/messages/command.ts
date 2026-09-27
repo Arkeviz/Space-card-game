@@ -19,7 +19,7 @@ export const CommandSchema = v.variant('type', [
   v.object({ type: v.literal(COMMAND_TYPE.CHOOSE_CARD), promptId, cardId }),
   v.object({ type: v.literal(COMMAND_TYPE.SKIP), promptId }),
   v.object({ type: v.literal(COMMAND_TYPE.END_TURN) }),
-  v.object({ type: v.literal(COMMAND_TYPE.FORFEIT) }),
+  v.object({ type: v.literal(COMMAND_TYPE.CONCEDE) }),
 ])
 
 /** Проверяет и приводит произвольные данные к Command. Возвращает null, если форма не совпала. */

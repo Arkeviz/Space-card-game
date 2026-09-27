@@ -368,10 +368,10 @@ describe('конец хода', () => {
   })
 })
 
-describe('сдача (FORFEIT)', () => {
-  it('соперник побеждает, форфит работает в чужой ход', () => {
+describe('сдача (CONCEDE)', () => {
+  it('соперник побеждает, сдаться можно в чужой ход', () => {
     const state = newGame()
-    const result = run(state, 1, { type: COMMAND_TYPE.FORFEIT })
+    const result = run(state, 1, { type: COMMAND_TYPE.CONCEDE })
     expect(result.state.winner).toBe(0)
     expect(result.events).toContainEqual({ type: EVENT_TYPE.GAME_OVER, winner: 0 })
   })
@@ -383,19 +383,19 @@ describe('сдача (FORFEIT)', () => {
     const played = run(state, 0, { type: COMMAND_TYPE.PLAY_CARD, cardId: fighter.id })
     expect(played.state.prompt).toMatchObject({ kind: PROMPT_KIND.DISCARD, player: 1 })
 
-    const result = run(played.state, 0, { type: COMMAND_TYPE.FORFEIT })
+    const result = run(played.state, 0, { type: COMMAND_TYPE.CONCEDE })
     expect(result.state.winner).toBe(1)
     expect(result.state.prompt).not.toBeNull()
   })
 
   it('после конца партии недоступен', () => {
     const state = newGame()
-    const over = run(state, 0, { type: COMMAND_TYPE.FORFEIT }).state
-    expect(errorOf(over, 0, { type: COMMAND_TYPE.FORFEIT })).toBe(COMMAND_ERROR.GAME_OVER)
+    const over = run(state, 0, { type: COMMAND_TYPE.CONCEDE }).state
+    expect(errorOf(over, 0, { type: COMMAND_TYPE.CONCEDE })).toBe(COMMAND_ERROR.GAME_OVER)
   })
 
   it('не предлагается как обычное игровое действие', () => {
     const actions = legalActions(newGame(), 0)
-    expect(actions.some(action => action.type === COMMAND_TYPE.FORFEIT)).toBe(false)
+    expect(actions.some(action => action.type === COMMAND_TYPE.CONCEDE)).toBe(false)
   })
 })

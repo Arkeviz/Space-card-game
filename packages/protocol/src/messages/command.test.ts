@@ -15,7 +15,7 @@ describe('parseCommand', () => {
       { type: COMMAND_TYPE.CHOOSE_CARD, promptId: 1, cardId: 'c1' },
       { type: COMMAND_TYPE.SKIP, promptId: 1 },
       { type: COMMAND_TYPE.END_TURN },
-      { type: COMMAND_TYPE.FORFEIT },
+      { type: COMMAND_TYPE.CONCEDE },
     ]
     for (const command of valid)
       expect(parseCommand(command)).toEqual(command)
