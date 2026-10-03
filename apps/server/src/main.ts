@@ -5,6 +5,7 @@ const port = Number(process.env.PORT ?? 3001)
 
 buildApp()
   .listen({ port, host: '0.0.0.0' })
+  .then(() => console.log('server started'))
   .catch((error) => {
     console.error(error)
     process.exit(1)
