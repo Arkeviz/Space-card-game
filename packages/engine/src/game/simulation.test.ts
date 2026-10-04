@@ -1,12 +1,18 @@
 import type { Command, GameState, PlayerId } from '../types/index.ts'
 import { describe, expect, it } from 'vitest'
+import { EXPLORER_COUNT, STARTING_DECK, TRADE_DECK_COMPOSITION } from '../data/config.ts'
 import { createRng } from '../lib/rng.ts'
 import { RESOURCE } from '../types/index.ts'
 import { apply } from './apply.ts'
 import { legalActions } from './legal.ts'
 import { createGame } from './setup.ts'
 
-const TOTAL_CARDS = 60
+/** Две стартовые колоды, исследователи и вся Торговая колода: растёт вместе с каталогом. */
+const TOTAL_CARDS = sum(STARTING_DECK) * 2 + EXPLORER_COUNT + sum(TRADE_DECK_COMPOSITION)
+
+function sum(composition: Readonly<Record<string, number>> | number): number {
+  return typeof composition === 'number' ? composition : Object.values(composition).reduce((total, count) => total + count, 0)
+}
 
 function cardIds(state: GameState): string[] {
   return [

@@ -24,7 +24,10 @@ const cards: Card[] = [
     faction: FACTION.NEUTRAL,
     kind: CARD_KIND.SHIP,
     cost: 2,
-    abilities: { [ABILITY_KIND.BASIC]: [trade(2)], [ABILITY_KIND.SCRAP]: [combat(2)] },
+    abilities: {
+      [ABILITY_KIND.BASIC]: [trade(2)],
+      [ABILITY_KIND.SCRAP]: [combat(2)],
+    },
   },
 
   // Торговая федерация
@@ -42,7 +45,10 @@ const cards: Card[] = [
     faction: FACTION.TRADE_FEDERATION,
     kind: CARD_KIND.SHIP,
     cost: 2,
-    abilities: { [ABILITY_KIND.BASIC]: [authority(1), trade(2)], [ABILITY_KIND.ALLY]: [combat(4)] },
+    abilities: {
+      [ABILITY_KIND.BASIC]: [authority(1), trade(2)],
+      [ABILITY_KIND.ALLY]: [combat(4)],
+    },
   },
   {
     id: 'trading-post',
@@ -51,7 +57,10 @@ const cards: Card[] = [
     kind: CARD_KIND.OUTPOST,
     cost: 3,
     defense: 4,
-    abilities: { [ABILITY_KIND.BASIC]: [choice([authority(1)], [trade(1)])], [ABILITY_KIND.SCRAP]: [combat(3)] },
+    abilities: {
+      [ABILITY_KIND.BASIC]: [choice([authority(1)], [trade(1)])],
+      [ABILITY_KIND.SCRAP]: [combat(3)],
+    },
   },
   {
     id: 'barter-world',
@@ -60,17 +69,23 @@ const cards: Card[] = [
     kind: CARD_KIND.BASE,
     cost: 4,
     defense: 4,
-    abilities: { [ABILITY_KIND.BASIC]: [choice([authority(2)], [trade(2)])], [ABILITY_KIND.SCRAP]: [combat(5)] },
+    abilities: {
+      [ABILITY_KIND.BASIC]: [choice([authority(2)], [trade(2)])],
+      [ABILITY_KIND.SCRAP]: [combat(5)],
+    },
   },
 
-  // Блоб
+  // Слизни
   {
     id: 'blob-fighter',
     name: 'Blob Fighter',
     faction: FACTION.BLOB,
     kind: CARD_KIND.SHIP,
     cost: 1,
-    abilities: { [ABILITY_KIND.BASIC]: [combat(3)], [ABILITY_KIND.ALLY]: [draw(1)] },
+    abilities: {
+      [ABILITY_KIND.BASIC]: [combat(3)],
+      [ABILITY_KIND.ALLY]: [draw(1)],
+    },
   },
   {
     id: 'battle-pod',
@@ -78,7 +93,21 @@ const cards: Card[] = [
     faction: FACTION.BLOB,
     kind: CARD_KIND.SHIP,
     cost: 2,
-    abilities: { [ABILITY_KIND.BASIC]: [combat(4), scrap([SCRAP_ZONE.TRADE_ROW], true)], [ABILITY_KIND.ALLY]: [combat(2)] },
+    abilities: {
+      [ABILITY_KIND.BASIC]: [combat(4), scrap([SCRAP_ZONE.TRADE_ROW], true)],
+      [ABILITY_KIND.ALLY]: [combat(2)],
+    },
+  },
+  {
+    id: 'trade-pod',
+    name: 'Trade Pod',
+    faction: FACTION.BLOB,
+    kind: CARD_KIND.SHIP,
+    cost: 2,
+    abilities: {
+      [ABILITY_KIND.BASIC]: [trade(3)],
+      [ABILITY_KIND.ALLY]: [combat(2)],
+    },
   },
   {
     id: 'blob-wheel',
@@ -87,10 +116,98 @@ const cards: Card[] = [
     kind: CARD_KIND.BASE,
     cost: 3,
     defense: 5,
-    abilities: { [ABILITY_KIND.BASIC]: [combat(1)], [ABILITY_KIND.SCRAP]: [trade(3)] },
+    abilities: {
+      [ABILITY_KIND.BASIC]: [combat(1)],
+      [ABILITY_KIND.SCRAP]: [trade(3)],
+    },
+  },
+  {
+    id: 'ram',
+    name: 'Ram',
+    faction: FACTION.BLOB,
+    kind: CARD_KIND.SHIP,
+    cost: 3,
+    abilities: {
+      [ABILITY_KIND.BASIC]: [combat(5)],
+      [ABILITY_KIND.ALLY]: [combat(2)],
+      [ABILITY_KIND.SCRAP]: [trade(3)],
+    },
+  },
+  {
+    id: 'blob-destroyer',
+    name: 'Blob destroyer',
+    faction: FACTION.BLOB,
+    kind: CARD_KIND.SHIP,
+    cost: 4,
+    abilities: {
+      [ABILITY_KIND.BASIC]: [combat(6)],
+      [ABILITY_KIND.ALLY]: [
+        choice([
+          scrap([SCRAP_ZONE.TRADE_ROW], true),
+          scrap([SCRAP_ZONE.HAND], true), // TODO доработать механику blob-destroyer (союзное свойство: когда "Вы можете уничтожить базу противника или сбросить карту из торгового ряда")
+        ]),
+      ],
+    },
+  },
+  {
+    id: 'the-hive',
+    name: 'The Hive',
+    faction: FACTION.BLOB,
+    kind: CARD_KIND.BASE,
+    cost: 5,
+    defense: 5,
+    abilities: {
+      [ABILITY_KIND.BASIC]: [combat(3)],
+      [ABILITY_KIND.ALLY]: [draw(1)],
+    },
+  },
+  {
+    id: 'battle-blob',
+    name: 'Battle Blob',
+    faction: FACTION.BLOB,
+    kind: CARD_KIND.SHIP,
+    cost: 6,
+    abilities: {
+      [ABILITY_KIND.BASIC]: [combat(8)],
+      [ABILITY_KIND.ALLY]: [draw(2)],
+      [ABILITY_KIND.SCRAP]: [combat(4)],
+    },
+  },
+  {
+    id: 'blob-carrier',
+    name: 'Blob Carrier',
+    faction: FACTION.BLOB,
+    kind: CARD_KIND.SHIP,
+    cost: 6,
+    abilities: {
+      [ABILITY_KIND.BASIC]: [combat(7)],
+      [ABILITY_KIND.ALLY]: [], // TODO добавить свойство "Купите 1 любой корабль, не тратя очки торговли, и положите его поверх вашей личной колоды"
+    },
+  },
+  {
+    id: 'mothership',
+    name: 'Mothership',
+    faction: FACTION.BLOB,
+    kind: CARD_KIND.SHIP,
+    cost: 7,
+    abilities: {
+      [ABILITY_KIND.BASIC]: [combat(6), draw(1)],
+      [ABILITY_KIND.ALLY]: [draw(1)],
+    },
+  },
+  {
+    id: 'blob-world',
+    name: 'Blob World',
+    faction: FACTION.BLOB,
+    kind: CARD_KIND.BASE,
+    cost: 8,
+    defense: 7,
+    abilities: {
+      [ABILITY_KIND.BASIC]: [combat(5)], // TODO Добавить свойство: "5 урона или возьмите 1 карту за каждую разыгранную карту слизней"
+    },
   },
 
-  // Машинный культ
+  // Технокульт
   {
     id: 'trade-bot',
     name: 'Trade Bot',
@@ -128,7 +245,10 @@ const cards: Card[] = [
     faction: FACTION.STAR_EMPIRE,
     kind: CARD_KIND.SHIP,
     cost: 1,
-    abilities: { [ABILITY_KIND.BASIC]: [combat(2), opponentDiscard(1)], [ABILITY_KIND.ALLY]: [combat(2)] },
+    abilities: {
+      [ABILITY_KIND.BASIC]: [combat(2), opponentDiscard(1)],
+      [ABILITY_KIND.ALLY]: [combat(2)],
+    },
   },
   {
     id: 'corvette',
@@ -136,7 +256,10 @@ const cards: Card[] = [
     faction: FACTION.STAR_EMPIRE,
     kind: CARD_KIND.SHIP,
     cost: 2,
-    abilities: { [ABILITY_KIND.BASIC]: [combat(1), draw(1)], [ABILITY_KIND.ALLY]: [combat(2)] },
+    abilities: {
+      [ABILITY_KIND.BASIC]: [combat(1), draw(1)],
+      [ABILITY_KIND.ALLY]: [combat(2)],
+    },
   },
   {
     id: 'royal-redoubt',
@@ -145,7 +268,10 @@ const cards: Card[] = [
     kind: CARD_KIND.OUTPOST,
     cost: 6,
     defense: 6,
-    abilities: { [ABILITY_KIND.BASIC]: [combat(3)], [ABILITY_KIND.ALLY]: [opponentDiscard(1)] },
+    abilities: {
+      [ABILITY_KIND.BASIC]: [combat(3)],
+      [ABILITY_KIND.ALLY]: [opponentDiscard(1)],
+    },
   },
 ]
 
