@@ -81,4 +81,18 @@ Fastify + `@fastify/websocket`, один маршрут `/ws`. `match-manager.ts
 
 Обёртка над `useWebSocket` из VueUse по протоколу `@space/protocol`: создание/вход в матч по коду, переподключение по токену из `sessionStorage`, команды с ack/reject, heartbeat. `lib/connection-state.ts` (класс `ConnectionState`) отделён от Vue и WebSocket - юнит-тестируется напрямую, как `MatchManager` на сервере; `composables/useGameConnection.ts` - тонкая обвязка. Подключение заводится один раз в `app/entry.ts` (`provideGameConnection`) и достаётся где угодно через `useGameConnection()` (Vue `provide`/`inject`). Подробности - в [apps/client/README.md](apps/client/README.md).
 
-Настоящее игровое поле (CardLayer, GSAP-анимации через AnimationDirector, `serverView`/`renderedView`) пока не реализовано - `pages/match/MatchPage.vue` сейчас временная страница для сквозной проверки протокола (список руки/Торгового ряда текстом, кнопки по `legalActions`), без вёрстки и анимаций.
+### Клиент: экран матча (`modules/match`, `modules/lobby`, `modules/cards`)
+
+Сделан по дизайну из артефакта «Звёздные империи - интерфейс»: токены - `src/app/styles/main.css`, шрифты Unbounded и IBM Plex подключены в `index.html`. Сцена фиксированная, 1920x1080 в логических пикселях, масштабируется под окно целиком (`common/ui/StageScaler.vue`); мобильной версии нет.
+
+- `modules/cards` - вид карты (`CardView`, `CardThumb`), русские названия, цвета фракций, разбор эффектов в токены. Правила и числа берутся из каталога движка.
+- `modules/match` - экран матча. Подмодули: `table` (чистая модель `TableState` - «нарисованное» состояние, `reduceEvent`, `indexLegalActions`), `board` (геометрия `lib/layout.ts`, узлы карт `lib/nodes.ts`, подсказки движения `lib/motion.ts`, слой карт `CardLayer` на GSAP), `animation-director` (очередь update'ов, группировка событий, раздача карт в начале партии), `hud` (панели, журнал, меню, конец игры), `prompts` (окна выбора эффекта, утилизации и сброса). Состояние - Pinia-стор `store/match-store.ts`. Подключение к серверу передаётся снаружи интерфейсом `MatchTransport` (его собирает `pages/match/MatchPage.vue`), сам модуль про WebSocket не знает.
+- `modules/lobby` - экраны лобби и ожидания соперника; `pages/lobby/LobbyPage.vue` связывает их с `modules/connection`.
+
+Ключевые идеи:
+
+1. Все видимые карты лежат в одном слое `CardLayer` плоским списком с ключом по id экземпляра. При смене зоны карта не пересоздаётся: меняется целевая поза, и GSAP её анимирует. Позиции считаются из констант (`lib/rects.ts`, `board/lib/layout.ts`), а не измеряются из DOM.
+2. События применяются к `TableState` по очереди; когда очередь опустела, стол сверяется со снимком сервера. Тест `table.test.ts` гоняет случайные партии и проверяет, что события воспроизводят снимок сервера.
+3. Ввод открыт, только пока очередь анимаций пуста и нет ожидающей команды.
+4. `update` с версией не `last + 1` или без событий (sync после переподключения) применяется без анимации.
+5. Сервер присылает в `update` поле `turnTimeLeftMs`; таймер хода и prompt'ов в UI отсчитывается от него.

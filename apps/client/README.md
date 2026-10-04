@@ -72,6 +72,10 @@ wsUrl передаётся параметром (`createGameConnection(wsUrl)`),
 `provideGameConnection(app, appConfig.wsUrl)` один раз при старте, дальше подключение получают через
 `useGameConnection()` (Vue `provide`/`inject`).
 
+## Экран матча
+
+Архитектура экрана (слой карт, очередь событий, `TableState`, интерфейс `MatchTransport`) описана в [AGENTS.md](../../AGENTS.md), раздел «Клиент: экран матча». Геометрия сцены (позиции зон и карт) лежит в `src/modules/match/lib/rects.ts` и `src/modules/match/modules/board/lib/layout.ts`: числа перенесены из дизайна, при правке сетки менять их там, а не в разметке.
+
 ## Команды
 
 ```bash

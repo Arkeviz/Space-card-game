@@ -38,3 +38,6 @@ coverage
 # Environment
 .env.*.local
 components.d.ts
+
+# Артефакты Playwright MCP
+.playwright-mcp/
