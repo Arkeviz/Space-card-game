@@ -34,6 +34,29 @@ describe('createGame', () => {
     expect(state.winner).toBeNull()
   })
 
+  it('первый игрок выбирается случайно из сида: встречаются оба, один сид - один результат', () => {
+    const firsts = Array.from({ length: 40 }, (_, seed) => createGame(seed).currentPlayer)
+    expect(new Set(firsts)).toEqual(new Set([0, 1]))
+    expect(createGame(5).currentPlayer).toBe(createGame(5).currentPlayer)
+  })
+
+  it('первый игрок берёт 3 карты, второй - 5, кто бы ни ходил первым', () => {
+    for (const first of [0, 1] as const) {
+      const state = createGame(9, { firstPlayer: first })
+      const second = first === 0 ? 1 : 0
+      expect(state.currentPlayer).toBe(first)
+      expect(state.players[first].hand).toHaveLength(3)
+      expect(state.players[second].hand).toHaveLength(5)
+    }
+  })
+
+  it('явный первый игрок не меняет остальную раскладку (бросок всё равно делается)', () => {
+    const a = createGame(9, { firstPlayer: 0 })
+    const b = createGame(9, { firstPlayer: 1 })
+    expect(a.tradeDeck).toEqual(b.tradeDeck)
+    expect(a.rngState).toBe(b.rngState)
+  })
+
   it('выдаёт уникальные id всем картам', () => {
     const ids = allCards(newGame()).map(card => card.id)
     expect(new Set(ids).size).toBe(ids.length)

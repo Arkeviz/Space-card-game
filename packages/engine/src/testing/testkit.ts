@@ -13,7 +13,7 @@ export function inst(cardId: string): CardInstance {
 
 /** Партия с фиксированным сидом. У игрока 0 в руке 3 карты, у игрока 1 - 5. */
 export function newGame(seed = 1): GameState {
-  return createGame(seed)
+  return createGame(seed, { firstPlayer: 0 })
 }
 
 type Instances<T extends readonly string[]> = { [K in keyof T]: CardInstance }
