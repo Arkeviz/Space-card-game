@@ -32,6 +32,24 @@ describe('redact', () => {
       expect(json).not.toContain(key)
   })
 
+  it('состав своей колоды виден без порядка, у соперника его нет', () => {
+    const state = newGame()
+    const view = redact(state, 0)
+    const expected: Record<string, number> = {}
+    for (const card of state.players[0].deck)
+      expected[card.cardId] = (expected[card.cardId] ?? 0) + 1
+    expect(view.self.deckContents).toEqual(expected)
+    expect(Object.values(view.self.deckContents).reduce((sum, n) => sum + n, 0)).toBe(view.self.deckCount)
+    expect(Object.keys(view.self.deckContents)).toEqual(['scout', 'viper'])
+    expect('deckContents' in view.opponent).toBe(false)
+  })
+
+  it('состав колоды не зависит от её порядка', () => {
+    const state = newGame()
+    const reversed = { ...state, players: [{ ...state.players[0], deck: [...state.players[0].deck].reverse() }, state.players[1]] } as typeof state
+    expect(JSON.stringify(redact(reversed, 0).self.deckContents)).toBe(JSON.stringify(redact(state, 0).self.deckContents))
+  })
+
   it('симметричен: второй игрок видит свою руку и не видит чужую', () => {
     const state = newGame()
     const view = redact(state, 1)

@@ -13,13 +13,13 @@ src/
     state.ts      GameState, PlayerState, Prompt ...
     command.ts    Command, ApplyResult
     event.ts      GameEvent
-    view.ts       PlayerView (снимок без скрытой информации)
+    view.ts       PlayerView (снимок без скрытой информации; свой состав колоды - deckContents, без порядка)
     index.ts      реэкспорт
   data/           данные игры
     cards.ts      каталог карт, getCard
     config.ts     размеры руки и ряда, стартовая колода, состав Торговой колоды
   game/           правила
-    setup.ts      createGame
+    setup.ts      createGame (первый игрок случайный из сида, можно задать options.firstPlayer)
     apply.ts      apply: обработка команд
     effects.ts    разрешение эффектов, prompt, добор, утилизация
     legal.ts      legalActions

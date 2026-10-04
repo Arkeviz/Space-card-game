@@ -17,7 +17,14 @@ export interface PlayerView {
   turn: number
   winner: PlayerId | null
   pools: Pools
-  self: PublicPlayerView & { hand: CardInstance[] }
+  self: PublicPlayerView & {
+    hand: CardInstance[]
+    /**
+     * Состав своей колоды: cardId -> сколько таких карт в ней, ключи по алфавиту. Игрок знает, какие карты у него
+     * в колоде, но не знает их порядок: порядка и id экземпляров здесь нет.
+     */
+    deckContents: Record<string, number>
+  }
   opponent: PublicPlayerView & { handCount: number }
   tradeRow: (CardInstance | null)[]
   tradeDeckCount: number

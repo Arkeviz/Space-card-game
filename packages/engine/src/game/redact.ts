@@ -2,6 +2,14 @@ import type { GameEvent, GameState, PlayerId, PlayerView } from '../types/index.
 import { EVENT_TYPE } from '../types/index.ts'
 import { other } from './effects.ts'
 
+/** Состав колоды без порядка: ключи отсортированы, иначе порядок первых появлений выдал бы порядок колоды. */
+function deckContents(deck: readonly { cardId: string }[]): Record<string, number> {
+  const counts: Record<string, number> = {}
+  for (const { cardId } of deck)
+    counts[cardId] = (counts[cardId] ?? 0) + 1
+  return Object.fromEntries(Object.entries(counts).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)))
+}
+
 /**
  * Снимок состояния для одного игрока. Не содержит скрытой информации:
  * ни порядка и состава колод, ни руки соперника, ни состояния генератора случайных чисел.
@@ -23,6 +31,7 @@ export function redact(state: GameState, viewer: PlayerId): PlayerView {
       discard: me.discard,
       inPlay: me.inPlay,
       hand: me.hand,
+      deckContents: deckContents(me.deck),
     },
     opponent: {
       authority: opponent.authority,
