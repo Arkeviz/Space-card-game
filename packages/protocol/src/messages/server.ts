@@ -45,6 +45,8 @@ export interface UpdateMessage {
   events: GameEvent[]
   view: PlayerView
   legalActions: Command[]
+  /** Сколько мс осталось до автодействия сервера (таймаут бездействия обновляется после каждой команды); null, если партия окончена. */
+  turnTimeLeftMs: number | null
 }
 
 export interface AckMessage {

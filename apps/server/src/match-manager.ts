@@ -15,6 +15,8 @@ export const DEFAULT_DISCONNECT_TIMEOUT_MS = 60_000
 export interface MatchManagerOptions {
   turnTimeoutMs?: number
   disconnectTimeoutMs?: number
+  /** Зафиксировать первого игрока (для тестов). По умолчанию он выбирается случайно при создании партии. */
+  firstPlayer?: PlayerId
 }
 
 interface Seat {
@@ -34,6 +36,8 @@ export class Room {
   state: GameState | null = null
   readonly seats: [Seat, Seat] = [createSeat(), createSeat()]
   turnTimer: ReturnType<typeof setTimeout> | null = null
+  /** Момент срабатывания turnTimer (Date.now(), мс); null, пока таймера нет. */
+  turnDeadline: number | null = null
 }
 
 function generateCode(): string {
@@ -61,10 +65,12 @@ export class MatchManager {
   private readonly codeToRoomId = new Map<string, string>()
   private readonly turnTimeoutMs: number
   private readonly disconnectTimeoutMs: number
+  private readonly firstPlayer: PlayerId | undefined
 
   constructor(options: MatchManagerOptions = {}) {
     this.turnTimeoutMs = options.turnTimeoutMs ?? DEFAULT_TURN_TIMEOUT_MS
     this.disconnectTimeoutMs = options.disconnectTimeoutMs ?? DEFAULT_DISCONNECT_TIMEOUT_MS
+    this.firstPlayer = options.firstPlayer
   }
 
   createMatch(socket: WebSocket): { room: Room, seat: PlayerId } {
@@ -91,12 +97,12 @@ export class MatchManager {
     const seat = room.seats[1]
     seat.claimed = true
     seat.socket = socket
-    room.state = createGame(randomInt(0, 2 ** 31))
+    room.state = createGame(randomInt(0, 2 ** 31), { firstPlayer: this.firstPlayer })
 
     send(socket, { type: SERVER_MESSAGE.JOINED, matchId: room.id, code: room.code, you: 1, token: seat.token, opponentConnected: true })
     // Первый update заодно сигналит игроку 0, что соперник подключился и партия началась.
-    this.broadcastUpdate(room, [])
     this.scheduleTurnTimeout(room)
+    this.broadcastUpdate(room, [])
     return { room, seat: 1 }
   }
 
@@ -136,6 +142,7 @@ export class MatchManager {
       events: [],
       view: redact(state, seat),
       legalActions: legalActions(state, seat),
+      turnTimeLeftMs: this.turnTimeLeftMs(room),
     })
   }
 
@@ -153,8 +160,8 @@ export class MatchManager {
     room.state = result.state
     if (ackTo)
       send(ackTo, { type: SERVER_MESSAGE.ACK, commandId })
-    this.broadcastUpdate(room, result.events)
     this.scheduleTurnTimeout(room)
+    this.broadcastUpdate(room, result.events)
   }
 
   /**
@@ -192,8 +199,14 @@ export class MatchManager {
         events: redactEvents(events, seat),
         view: redact(state, seat),
         legalActions: legalActions(state, seat),
+        turnTimeLeftMs: this.turnTimeLeftMs(room),
       })
     }
+  }
+
+  /** Сколько осталось до автодействия. Относительное значение клиенту удобнее абсолютного: не зависит от разницы часов. */
+  private turnTimeLeftMs(room: Room): number | null {
+    return room.turnDeadline === null ? null : Math.max(0, room.turnDeadline - Date.now())
   }
 
   /** Если игрок, чей сейчас ход (или кто должен ответить на prompt), не действует вовремя - действие выбирается автоматически. */
@@ -202,11 +215,13 @@ export class MatchManager {
       clearTimeout(room.turnTimer)
       room.turnTimer = null
     }
+    room.turnDeadline = null
     const { state } = room
     if (!state || state.winner !== null)
       return
 
     const actor = state.prompt ? state.prompt.player : state.currentPlayer
+    room.turnDeadline = Date.now() + this.turnTimeoutMs
     room.turnTimer = setTimeout(() => this.autoAct(room, actor), this.turnTimeoutMs)
   }
 

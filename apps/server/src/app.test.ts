@@ -36,7 +36,7 @@ function messageQueue(socket: MessageSocket) {
 }
 
 describe('ws heartbeat', () => {
-  const app = buildApp()
+  const app = buildApp({ firstPlayer: 0 })
 
   afterEach(async () => {
     await app.close()
@@ -56,7 +56,7 @@ describe('ws heartbeat', () => {
 
 describe('ws matchmaking: сквозной сценарий через реальный маршрут /ws', () => {
   it('создание, вход по коду, обмен командой и рассылка update обоим игрокам', async () => {
-    const app = buildApp({ turnTimeoutMs: 60_000, disconnectTimeoutMs: 60_000 })
+    const app = buildApp({ firstPlayer: 0, turnTimeoutMs: 60_000, disconnectTimeoutMs: 60_000 })
     await app.ready()
     try {
       const creator = await app.injectWS('/ws')
@@ -95,7 +95,7 @@ describe('ws matchmaking: сквозной сценарий через реал�
   })
 
   it('неверный код входа возвращает ERROR not-found', async () => {
-    const app = buildApp()
+    const app = buildApp({ firstPlayer: 0 })
     await app.ready()
     try {
       const socket = await app.injectWS('/ws')
@@ -110,7 +110,7 @@ describe('ws matchmaking: сквозной сценарий через реал�
   })
 
   it('команда до входа в матч возвращает ERROR not-in-match', async () => {
-    const app = buildApp()
+    const app = buildApp({ firstPlayer: 0 })
     await app.ready()
     try {
       const socket = await app.injectWS('/ws')
@@ -125,7 +125,7 @@ describe('ws matchmaking: сквозной сценарий через реал�
   })
 
   it('повторное создание матча на уже привязанном сокете возвращает ERROR already-in-match', async () => {
-    const app = buildApp()
+    const app = buildApp({ firstPlayer: 0 })
     await app.ready()
     try {
       const socket = await app.injectWS('/ws')

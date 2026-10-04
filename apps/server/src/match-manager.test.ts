@@ -32,7 +32,7 @@ function fakeSocket() {
 
 describe('matchManager: создание и вход по коду', () => {
   it('создатель получает код и место 0, opponentConnected: false', () => {
-    const manager = new MatchManager()
+    const manager = new MatchManager({ firstPlayer: 0 })
     const socket = fakeSocket()
     const { room, seat } = manager.createMatch(socket)
     expect(seat).toBe(0)
@@ -42,7 +42,7 @@ describe('matchManager: создание и вход по коду', () => {
   })
 
   it('вход по неверному коду - ошибка not-found', () => {
-    const manager = new MatchManager()
+    const manager = new MatchManager({ firstPlayer: 0 })
     manager.createMatch(fakeSocket())
     const joiner = fakeSocket()
     const result = manager.joinMatch(joiner, 'ZZZZZZ')
@@ -50,7 +50,7 @@ describe('matchManager: создание и вход по коду', () => {
   })
 
   it('вход по верному коду (без учёта регистра): место 1, партия создаётся, оба получают update', () => {
-    const manager = new MatchManager()
+    const manager = new MatchManager({ firstPlayer: 0 })
     const creatorSocket = fakeSocket()
     const { room } = manager.createMatch(creatorSocket)
     const joinerSocket = fakeSocket()
@@ -69,8 +69,24 @@ describe('matchManager: создание и вход по коду', () => {
     expect(creatorUpdate.view.you).toBe(0)
   })
 
+  it('первого игрока можно задать, иначе он выбирается случайно', () => {
+    const fixed = new MatchManager({ firstPlayer: 1 })
+    const { room } = fixed.createMatch(fakeSocket())
+    fixed.joinMatch(fakeSocket(), room.code)
+    expect(room.state!.currentPlayer).toBe(1)
+
+    const seen = new Set<number>()
+    for (let i = 0; i < 40 && seen.size < 2; i++) {
+      const manager = new MatchManager()
+      const created = manager.createMatch(fakeSocket())
+      manager.joinMatch(fakeSocket(), created.room.code)
+      seen.add(created.room.state!.currentPlayer)
+    }
+    expect(seen).toEqual(new Set([0, 1]))
+  })
+
   it('третий не может войти в уже заполненный матч', () => {
-    const manager = new MatchManager()
+    const manager = new MatchManager({ firstPlayer: 0 })
     const { room } = manager.createMatch(fakeSocket())
     manager.joinMatch(fakeSocket(), room.code)
     const result = manager.joinMatch(fakeSocket(), room.code)
@@ -80,7 +96,7 @@ describe('matchManager: создание и вход по коду', () => {
 
 describe('matchManager: команды', () => {
   function setupMatch() {
-    const manager = new MatchManager()
+    const manager = new MatchManager({ firstPlayer: 0 })
     const socket0 = fakeSocket()
     const { room } = manager.createMatch(socket0)
     const socket1 = fakeSocket()
@@ -134,7 +150,7 @@ describe('matchManager: таймауты', () => {
   })
 
   it('отключение без переподключения: по истечении таймаута отключившийся сдаётся, соперник побеждает', () => {
-    const manager = new MatchManager({ disconnectTimeoutMs: 1000 })
+    const manager = new MatchManager({ firstPlayer: 0, disconnectTimeoutMs: 1000 })
     const socket0 = fakeSocket()
     const { room } = manager.createMatch(socket0)
     const socket1 = fakeSocket()
@@ -151,7 +167,7 @@ describe('matchManager: таймауты', () => {
   })
 
   it('переподключение до истечения таймаута отменяет сдачу', () => {
-    const manager = new MatchManager({ disconnectTimeoutMs: 1000 })
+    const manager = new MatchManager({ firstPlayer: 0, disconnectTimeoutMs: 1000 })
     const socket0 = fakeSocket()
     const { room } = manager.createMatch(socket0)
     manager.joinMatch(fakeSocket(), room.code)
@@ -169,7 +185,7 @@ describe('matchManager: таймауты', () => {
   })
 
   it('неверный токен переподключения отклоняется', () => {
-    const manager = new MatchManager()
+    const manager = new MatchManager({ firstPlayer: 0 })
     const { room } = manager.createMatch(fakeSocket())
     manager.joinMatch(fakeSocket(), room.code)
     const result = manager.reconnect(fakeSocket(), room.id, 'чужой-токен')
@@ -177,7 +193,7 @@ describe('matchManager: таймауты', () => {
   })
 
   it('переподключение при живом старом сокете закрывает его, а не молча подменяет', () => {
-    const manager = new MatchManager()
+    const manager = new MatchManager({ firstPlayer: 0 })
     const socket0 = fakeSocket()
     const { room } = manager.createMatch(socket0)
     manager.joinMatch(fakeSocket(), room.code)
@@ -191,7 +207,7 @@ describe('matchManager: таймауты', () => {
   })
 
   it('close устаревшего (перехваченного) сокета не отключает место у нового', () => {
-    const manager = new MatchManager({ disconnectTimeoutMs: 1000 })
+    const manager = new MatchManager({ firstPlayer: 0, disconnectTimeoutMs: 1000 })
     const socket0 = fakeSocket()
     const { room } = manager.createMatch(socket0)
     manager.joinMatch(fakeSocket(), room.code)
@@ -208,7 +224,7 @@ describe('matchManager: таймауты', () => {
   })
 
   it('игрок не действует в срок: END_TURN применяется автоматически', () => {
-    const manager = new MatchManager({ turnTimeoutMs: 1000 })
+    const manager = new MatchManager({ firstPlayer: 0, turnTimeoutMs: 1000 })
     const socket0 = fakeSocket()
     const { room } = manager.createMatch(socket0)
     manager.joinMatch(fakeSocket(), room.code)
@@ -219,7 +235,7 @@ describe('matchManager: таймауты', () => {
   })
 
   it('открытый prompt на таймауте: выбирается SKIP, если доступен', () => {
-    const manager = new MatchManager({ turnTimeoutMs: 1000 })
+    const manager = new MatchManager({ firstPlayer: 0, turnTimeoutMs: 1000 })
     const socket0 = fakeSocket()
     const { room } = manager.createMatch(socket0)
     manager.joinMatch(fakeSocket(), room.code)
@@ -233,8 +249,30 @@ describe('matchManager: таймауты', () => {
     expect(room.state!.prompt).toBeNull()
   })
 
+  it('update содержит оставшееся время хода: полный таймаут после команды, меньше - в sync позже', () => {
+    const manager = new MatchManager({ firstPlayer: 0, turnTimeoutMs: 1000 })
+    const socket0 = fakeSocket()
+    const { room } = manager.createMatch(socket0)
+    manager.joinMatch(fakeSocket(), room.code)
+    expect((socket0 as unknown as FakeSocket).lastOf(SERVER_MESSAGE.UPDATE).turnTimeLeftMs).toBe(1000)
+
+    vi.advanceTimersByTime(400)
+    manager.sync(room, 0)
+    expect((socket0 as unknown as FakeSocket).lastOf(SERVER_MESSAGE.UPDATE).turnTimeLeftMs).toBe(600)
+  })
+
+  it('после конца партии update не содержит оставшегося времени', () => {
+    const manager = new MatchManager({ firstPlayer: 0, turnTimeoutMs: 1000 })
+    const socket0 = fakeSocket()
+    const { room } = manager.createMatch(socket0)
+    manager.joinMatch(fakeSocket(), room.code)
+
+    manager.submitCommand(room, 0, 'concede', { type: COMMAND_TYPE.CONCEDE })
+    expect((socket0 as unknown as FakeSocket).lastOf(SERVER_MESSAGE.UPDATE).turnTimeLeftMs).toBeNull()
+  })
+
   it('после конца партии таймер хода не запускается', () => {
-    const manager = new MatchManager({ turnTimeoutMs: 1000 })
+    const manager = new MatchManager({ firstPlayer: 0, turnTimeoutMs: 1000 })
     const socket0 = fakeSocket()
     const { room } = manager.createMatch(socket0)
     manager.joinMatch(fakeSocket(), room.code)
