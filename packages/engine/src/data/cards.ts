@@ -9,7 +9,6 @@ const draw = (amount: number): Effect => ({ type: EFFECT_TYPE.DRAW, amount })
 const opponentDiscard = (amount: number): Effect => ({ type: EFFECT_TYPE.OPPONENT_DISCARD, amount })
 const choice = (...options: Effect[][]): Effect => ({ type: EFFECT_TYPE.CHOICE, options })
 const scrap = (from: ScrapZone[], optional: boolean): Effect => ({ type: EFFECT_TYPE.SCRAP, from, optional })
-/** «Можете утилизировать карту из руки или сброса» - у большинства карт Технокульта. */
 const scrapOwn = (): Effect => scrap([SCRAP_ZONE.HAND, SCRAP_ZONE.DISCARD], true)
 const destroyBase = (optional: boolean): Effect => ({ type: EFFECT_TYPE.DESTROY_BASE, optional })
 const acquireShip = (): Effect => ({ type: EFFECT_TYPE.ACQUIRE_SHIP })
@@ -68,48 +67,11 @@ const cards: Card[] = [
     faction: FACTION.TRADE_FEDERATION,
     kind: CARD_KIND.SHIP,
     cost: 3,
-    abilities: { [ABILITY_KIND.BASIC]: [authority(3), trade(2), drawIfBases(2, 2)] },
-  },
-  {
-    id: 'freighter',
-    name: 'Freighter',
-    faction: FACTION.TRADE_FEDERATION,
-    kind: CARD_KIND.SHIP,
-    cost: 4,
-    abilities: {
-      [ABILITY_KIND.BASIC]: [trade(4)],
-      [ABILITY_KIND.ALLY]: [nextShipToDeckTop()],
-    },
-  },
-  {
-    id: 'trade-escort',
-    name: 'Trade Escort',
-    faction: FACTION.TRADE_FEDERATION,
-    kind: CARD_KIND.SHIP,
-    cost: 5,
-    abilities: {
-      [ABILITY_KIND.BASIC]: [authority(4), combat(4)],
-      [ABILITY_KIND.ALLY]: [draw(1)],
-    },
-  },
-  {
-    id: 'flagship',
-    name: 'Flagship',
-    faction: FACTION.TRADE_FEDERATION,
-    kind: CARD_KIND.SHIP,
-    cost: 6,
-    abilities: {
-      [ABILITY_KIND.BASIC]: [combat(5), draw(1)],
-      [ABILITY_KIND.ALLY]: [authority(5)],
-    },
-  },
-  {
-    id: 'command-ship',
-    name: 'Command Ship',
-    faction: FACTION.TRADE_FEDERATION,
-    kind: CARD_KIND.SHIP,
-    cost: 8,
-    abilities: { [ABILITY_KIND.BASIC]: [authority(4), combat(5), draw(2)] },
+    abilities: { [ABILITY_KIND.BASIC]: [
+      authority(3),
+      trade(2),
+      drawIfBases(2, 2),
+    ] },
   },
   {
     id: 'trading-post',
@@ -136,6 +98,17 @@ const cards: Card[] = [
     },
   },
   {
+    id: 'freighter',
+    name: 'Freighter',
+    faction: FACTION.TRADE_FEDERATION,
+    kind: CARD_KIND.SHIP,
+    cost: 4,
+    abilities: {
+      [ABILITY_KIND.BASIC]: [trade(4)],
+      [ABILITY_KIND.ALLY]: [nextShipToDeckTop()],
+    },
+  },
+  {
     id: 'defense-center',
     name: 'Defense Center',
     faction: FACTION.TRADE_FEDERATION,
@@ -145,6 +118,28 @@ const cards: Card[] = [
     abilities: {
       [ABILITY_KIND.BASIC]: [choice([authority(3)], [combat(2)])],
       [ABILITY_KIND.ALLY]: [combat(2)],
+    },
+  },
+  {
+    id: 'trade-escort',
+    name: 'Trade Escort',
+    faction: FACTION.TRADE_FEDERATION,
+    kind: CARD_KIND.SHIP,
+    cost: 5,
+    abilities: {
+      [ABILITY_KIND.BASIC]: [authority(4), combat(4)],
+      [ABILITY_KIND.ALLY]: [draw(1)],
+    },
+  },
+  {
+    id: 'flagship',
+    name: 'Flagship',
+    faction: FACTION.TRADE_FEDERATION,
+    kind: CARD_KIND.SHIP,
+    cost: 6,
+    abilities: {
+      [ABILITY_KIND.BASIC]: [combat(5), draw(1)],
+      [ABILITY_KIND.ALLY]: [authority(5)],
     },
   },
   {
@@ -169,6 +164,17 @@ const cards: Card[] = [
     abilities: {
       [ABILITY_KIND.BASIC]: [trade(2), nextShipToDeckTop()],
       [ABILITY_KIND.ALLY]: [draw(1)],
+    },
+  },
+  {
+    id: 'command-ship',
+    name: 'Command Ship',
+    faction: FACTION.TRADE_FEDERATION,
+    kind: CARD_KIND.SHIP,
+    cost: 8,
+    abilities: {
+      [ABILITY_KIND.BASIC]: [authority(4), combat(5), draw(2)],
+      [ABILITY_KIND.ALLY]: [destroyBase(true)],
     },
   },
 
@@ -238,7 +244,6 @@ const cards: Card[] = [
     cost: 4,
     abilities: {
       [ABILITY_KIND.BASIC]: [combat(6)],
-      // «Можете уничтожить базу и/или утилизировать карту из торгового ряда»: два необязательных запроса подряд.
       [ABILITY_KIND.ALLY]: [destroyBase(true), scrap([SCRAP_ZONE.TRADE_ROW], true)],
     },
   },
@@ -323,6 +328,15 @@ const cards: Card[] = [
     },
   },
   {
+    id: 'battle-station',
+    name: 'Battle Station',
+    faction: FACTION.MACHINE_CULT,
+    kind: CARD_KIND.OUTPOST,
+    cost: 3,
+    defense: 5,
+    abilities: { [ABILITY_KIND.SCRAP]: [combat(5)] },
+  },
+  {
     id: 'supply-bot',
     name: 'Supply Bot',
     faction: FACTION.MACHINE_CULT,
@@ -332,15 +346,6 @@ const cards: Card[] = [
       [ABILITY_KIND.BASIC]: [trade(2), scrapOwn()],
       [ABILITY_KIND.ALLY]: [combat(2)],
     },
-  },
-  {
-    id: 'battle-station',
-    name: 'Battle Station',
-    faction: FACTION.MACHINE_CULT,
-    kind: CARD_KIND.OUTPOST,
-    cost: 3,
-    defense: 5,
-    abilities: { [ABILITY_KIND.SCRAP]: [combat(5)] },
   },
   {
     id: 'patrol-mech',
@@ -359,7 +364,6 @@ const cards: Card[] = [
     faction: FACTION.MACHINE_CULT,
     kind: CARD_KIND.SHIP,
     cost: 4,
-    // Копирует другой корабль, сыгранный в этот ход, и получает его фракцию в дополнение к своей.
     abilities: { [ABILITY_KIND.BASIC]: [copyShip()] },
   },
   {
@@ -370,17 +374,6 @@ const cards: Card[] = [
     cost: 5,
     abilities: {
       [ABILITY_KIND.BASIC]: [combat(4), scrapOwn()],
-      [ABILITY_KIND.ALLY]: [draw(1)],
-    },
-  },
-  {
-    id: 'missile-mech',
-    name: 'Missile Mech',
-    faction: FACTION.MACHINE_CULT,
-    kind: CARD_KIND.SHIP,
-    cost: 6,
-    abilities: {
-      [ABILITY_KIND.BASIC]: [combat(6), destroyBase(false)],
       [ABILITY_KIND.ALLY]: [draw(1)],
     },
   },
@@ -402,6 +395,17 @@ const cards: Card[] = [
     cost: 6,
     defense: 5,
     abilities: { [ABILITY_KIND.BASIC]: [scrapOwn()] },
+  },
+  {
+    id: 'missile-mech',
+    name: 'Missile Mech',
+    faction: FACTION.MACHINE_CULT,
+    kind: CARD_KIND.SHIP,
+    cost: 6,
+    abilities: {
+      [ABILITY_KIND.BASIC]: [combat(6), destroyBase(false)],
+      [ABILITY_KIND.ALLY]: [draw(1)],
+    },
   },
   {
     id: 'machine-base',
@@ -438,6 +442,17 @@ const cards: Card[] = [
     },
   },
   {
+    id: 'corvette',
+    name: 'Corvette',
+    faction: FACTION.STAR_EMPIRE,
+    kind: CARD_KIND.SHIP,
+    cost: 2,
+    abilities: {
+      [ABILITY_KIND.BASIC]: [combat(1), draw(1)],
+      [ABILITY_KIND.ALLY]: [combat(2)],
+    },
+  },
+  {
     id: 'imperial-frigate',
     name: 'Imperial Frigate',
     faction: FACTION.STAR_EMPIRE,
@@ -461,38 +476,13 @@ const cards: Card[] = [
     },
   },
   {
-    id: 'corvette',
-    name: 'Corvette',
+    id: 'recycling-station',
+    name: 'Recycling Station',
     faction: FACTION.STAR_EMPIRE,
-    kind: CARD_KIND.SHIP,
-    cost: 2,
-    abilities: {
-      [ABILITY_KIND.BASIC]: [combat(1), draw(1)],
-      [ABILITY_KIND.ALLY]: [combat(2)],
-    },
-  },
-  {
-    id: 'battlecruiser',
-    name: 'Battlecruiser',
-    faction: FACTION.STAR_EMPIRE,
-    kind: CARD_KIND.SHIP,
-    cost: 6,
-    abilities: {
-      [ABILITY_KIND.BASIC]: [combat(5), draw(1)],
-      [ABILITY_KIND.ALLY]: [opponentDiscard(1)],
-      [ABILITY_KIND.SCRAP]: [draw(1), destroyBase(true)],
-    },
-  },
-  {
-    id: 'dreadnaught',
-    name: 'Dreadnaught',
-    faction: FACTION.STAR_EMPIRE,
-    kind: CARD_KIND.SHIP,
-    cost: 7,
-    abilities: {
-      [ABILITY_KIND.BASIC]: [combat(7), draw(1)],
-      [ABILITY_KIND.SCRAP]: [combat(5)],
-    },
+    kind: CARD_KIND.OUTPOST,
+    cost: 4,
+    defense: 4,
+    abilities: { [ABILITY_KIND.BASIC]: [choice([trade(1)], [discardDraw(2)])] },
   },
   {
     id: 'space-station',
@@ -508,15 +498,6 @@ const cards: Card[] = [
     },
   },
   {
-    id: 'recycling-station',
-    name: 'Recycling Station',
-    faction: FACTION.STAR_EMPIRE,
-    kind: CARD_KIND.OUTPOST,
-    cost: 4,
-    defense: 4,
-    abilities: { [ABILITY_KIND.BASIC]: [choice([trade(1)], [discardDraw(2)])] },
-  },
-  {
     id: 'war-world',
     name: 'War World',
     faction: FACTION.STAR_EMPIRE,
@@ -529,6 +510,19 @@ const cards: Card[] = [
     },
   },
   {
+    id: 'battlecruiser',
+    name: 'Battlecruiser',
+    faction: FACTION.STAR_EMPIRE,
+    kind: CARD_KIND.SHIP,
+    cost: 6,
+    abilities: {
+      [ABILITY_KIND.BASIC]: [combat(5), draw(1)],
+      [ABILITY_KIND.ALLY]: [opponentDiscard(1)],
+      [ABILITY_KIND.SCRAP]: [draw(1), destroyBase(true)],
+    },
+  },
+
+  {
     id: 'royal-redoubt',
     name: 'Royal Redoubt',
     faction: FACTION.STAR_EMPIRE,
@@ -538,6 +532,17 @@ const cards: Card[] = [
     abilities: {
       [ABILITY_KIND.BASIC]: [combat(3)],
       [ABILITY_KIND.ALLY]: [opponentDiscard(1)],
+    },
+  },
+  {
+    id: 'dreadnaught',
+    name: 'Dreadnaught',
+    faction: FACTION.STAR_EMPIRE,
+    kind: CARD_KIND.SHIP,
+    cost: 7,
+    abilities: {
+      [ABILITY_KIND.BASIC]: [combat(7), draw(1)],
+      [ABILITY_KIND.SCRAP]: [combat(5)],
     },
   },
   {
