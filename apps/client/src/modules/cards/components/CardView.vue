@@ -12,6 +12,7 @@ import {
   cardName,
   FACTION_META,
   KIND_LABEL,
+  passiveLabels,
   TOKEN_KIND,
 } from '../lib/card-meta'
 import { CARD_FORM, CARD_SIZE, CARD_STATE, frameColor, glowFilter, SHOW_STAT_ICONS } from '../lib/card-visual'
@@ -28,7 +29,10 @@ const props = withDefaults(defineProps<{
   basic?: AbilityStatus
   ally?: AbilityStatus
   scrap?: AbilityStatus
+  /** Карта скопировала другой корабль (Stealth Needle): показываются способности копии. */
+  copyOf?: string
 }>(), {
+  copyOf: undefined,
   cardId: null,
   form: CARD_FORM.CARD,
   state: CARD_STATE.IDLE,
@@ -43,7 +47,8 @@ const isDeployed = computed(() => !isBack.value && props.form === CARD_FORM.DEPL
 const card = computed(() => (props.cardId && !isBack.value ? getCard(props.cardId) : null))
 const faction = computed(() => (card.value ? FACTION_META[card.value.faction] : null))
 const isOutpost = computed(() => card.value?.kind === CARD_KIND.OUTPOST)
-const rows = computed(() => (props.cardId && !isBack.value ? abilityRows(props.cardId) : []))
+const rows = computed(() => (props.cardId && !isBack.value ? abilityRows(props.copyOf ?? props.cardId) : []))
+const passives = computed(() => (props.cardId && !isBack.value ? passiveLabels(props.cardId) : []))
 
 const size = computed(() => (isDeployed.value ? CARD_SIZE.DEPLOYED : CARD_SIZE.CARD))
 const frame = computed(() => frameColor(props.state, isBack.value ? '79,216,255' : (faction.value?.rgb ?? '79,216,255')))
@@ -126,7 +131,7 @@ const kindLabel = computed(() => (card.value ? KIND_LABEL[card.value.kind] : '')
       <div class="card__art">
         <AppIcon :name="card.kind === CARD_KIND.SHIP ? ICON.SHIP : ICON.STATION" :size="isDeployed ? 26 : 38" :stroke="1.2" class="card__art-glyph" />
         <div class="card__art-caption">
-          ИЗОБРАЖЕНИЕ
+          {{ copyOf ? `КОПИЯ · ${cardName(copyOf)}` : 'ИЗОБРАЖЕНИЕ' }}
         </div>
       </div>
 
@@ -175,6 +180,11 @@ const kindLabel = computed(() => (card.value ? KIND_LABEL[card.value.kind] : '')
           </div>
           <AppIcon v-if="row.status === ABILITY_STATUS.USED" :name="ICON.CHECK" :size="13" :stroke="2.6" label="Использовано" class="card__row-mark card__row-mark--used" />
           <AppIcon v-if="row.status === ABILITY_STATUS.READY" :name="ICON.ARROW" :size="13" :stroke="2.6" label="Можно активировать" class="card__row-mark card__row-mark--ready" />
+        </div>
+        <div v-for="text in passives" :key="text" class="card__row card__row--passive">
+          <div class="card__text card__text--below">
+            {{ text }}
+          </div>
         </div>
       </div>
     </div>

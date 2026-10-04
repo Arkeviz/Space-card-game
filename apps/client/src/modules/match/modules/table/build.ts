@@ -1,5 +1,9 @@
-import type { PlayerView } from '@space/engine'
+import type { PlayedCard, PlayerView } from '@space/engine'
 import type { TableState } from './types'
+
+function copyPlayed(entry: PlayedCard): PlayedCard {
+  return { card: { ...entry.card }, used: { ...entry.used }, ...(entry.copyOf ? { copyOf: entry.copyOf } : {}) }
+}
 
 /** Стол по снимку состояния от сервера. Данные копируются: view приходит из реактивного состояния подключения. */
 export function buildTable(view: PlayerView): TableState {
@@ -16,7 +20,7 @@ export function buildTable(view: PlayerView): TableState {
       hand: view.self.hand.map(card => ({ ...card })),
       deckContents: { ...view.self.deckContents },
       discard: view.self.discard.map(card => ({ ...card })),
-      inPlay: view.self.inPlay.map(entry => ({ card: { ...entry.card }, used: { ...entry.used } })),
+      inPlay: view.self.inPlay.map(copyPlayed),
     },
     opponent: {
       authority: view.opponent.authority,
@@ -25,7 +29,7 @@ export function buildTable(view: PlayerView): TableState {
       hand: [],
       deckContents: null,
       discard: view.opponent.discard.map(card => ({ ...card })),
-      inPlay: view.opponent.inPlay.map(entry => ({ card: { ...entry.card }, used: { ...entry.used } })),
+      inPlay: view.opponent.inPlay.map(copyPlayed),
     },
     tradeRow: view.tradeRow.map(card => (card ? { ...card } : null)),
     tradeDeckCount: view.tradeDeckCount,

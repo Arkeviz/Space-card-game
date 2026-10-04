@@ -15,6 +15,10 @@ const props = defineProps<{
   legal: LegalIndex
   zones: ScrapZone[]
   optional: boolean
+  /** Сколько карт ещё можно утилизировать (Brain World: до двух). */
+  remaining?: number
+  /** За каждую утилизированную карту берётся новая. */
+  drawPerScrap?: boolean
   source: CardInstance | null
   deadline: number | null
 }>()
@@ -48,6 +52,14 @@ const sections = computed(() => props.zones
 
 const selectedCard = computed(() => sections.value.flatMap(section => section.cards).find(card => card.id === selected.value) ?? null)
 const title = computed(() => (props.source ? cardName(props.source.cardId) : 'Утилизация'))
+const lead = computed(() => {
+  const draw = props.drawPerScrap ? ' За каждую вы возьмёте новую карту.' : ''
+  if ((props.remaining ?? 1) > 1)
+    return `Можно навсегда убрать на свалку до ${props.remaining} карт, по одной.${draw}`
+  return props.optional
+    ? `Можно навсегда убрать одну карту на свалку.${draw}`
+    : `Выберите карту, которую нужно навсегда убрать на свалку.${draw}`
+})
 
 function confirm(): void {
   if (selected.value)
@@ -62,7 +74,7 @@ function confirm(): void {
     </template>
 
     <p class="lead">
-      {{ optional ? 'Можно навсегда убрать одну карту на свалку.' : 'Выберите карту, которую нужно навсегда убрать на свалку.' }}
+      {{ lead }}
     </p>
 
     <div v-for="section in sections" :key="section.zone" class="section">

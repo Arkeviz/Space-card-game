@@ -36,6 +36,7 @@ const scrapLabel = computed(() => (props.node.cardId ? `Утилизироват
           :basic="node.basic"
           :ally="node.ally"
           :scrap="node.scrap"
+          :copy-of="node.copyOf"
         />
       </div>
     </div>

@@ -1,7 +1,7 @@
 import type { Card, GameEvent, ValueOf } from '@space/engine'
 import type { TableState } from '../../table'
 import type { FxItem, FxTarget } from './fx'
-import { ABILITY_KIND, CARD_KIND, EVENT_TYPE, getCard, PROMPT_KIND, RESOURCE } from '@space/engine'
+import { ABILITY_KIND, CARD_KIND, DESTINATION, EVENT_TYPE, getCard, PROMPT_KIND, RESOURCE } from '@space/engine'
 import { cardName, describeEffectShort, KIND_LABEL } from '@/modules/cards'
 import { SIDE, sideOf } from '../../table'
 import { FX_TARGET, FX_TONE } from './fx'
@@ -93,8 +93,18 @@ export function describeStep(group: readonly GameEvent[], before: TableState, af
       }
 
       case EVENT_TYPE.CARD_BOUGHT:
-        item(isMine(event.player), `Покупка: «${cardName(event.card.cardId)}» за ${getCard(event.card.cardId).cost}`)
+        item(isMine(event.player), `Покупка: «${cardName(event.card.cardId)}» за ${getCard(event.card.cardId).cost}${event.to === DESTINATION.DECK_TOP ? ', на верх колоды' : ''}`)
         break
+
+      case EVENT_TYPE.CARD_ACQUIRED:
+        item(isMine(event.player), `Получен бесплатно: «${cardName(event.card.cardId)}», на верх колоды`)
+        break
+
+      case EVENT_TYPE.SHIP_COPIED: {
+        const own = [...before.self.inPlay, ...before.opponent.inPlay].find(entry => entry.card.id === event.cardId)
+        item(isMine(event.player), `«${cardName(own?.card.cardId ?? event.cardId)}» копирует «${cardName(event.copyOf)}»`)
+        break
+      }
 
       case EVENT_TYPE.RESOURCE_GAINED:
         if (event.resource === RESOURCE.AUTHORITY)
@@ -137,7 +147,8 @@ export function describeStep(group: readonly GameEvent[], before: TableState, af
         break
 
       case EVENT_TYPE.PROMPT_OPENED:
-        if (event.prompt.kind === PROMPT_KIND.DISCARD)
+        // Обязательный сброс по требованию соперника; свой необязательный сброс (Recycling Station) журнал не засоряет.
+        if (event.prompt.kind === PROMPT_KIND.DISCARD && !event.prompt.optional)
           item(!isMine(event.prompt.player), isMine(event.prompt.player) ? 'Вы должны сбросить 1 карту' : 'Соперник должен сбросить карту')
         break
 

@@ -2,7 +2,16 @@ import type { CardInstance, Effect } from '@space/engine'
 import { ABILITY_KIND, CARD_KIND, EFFECT_TYPE, getCard } from '@space/engine'
 
 /** Эффекты, после которых игре нужен чей-то выбор: ответ даёт игрок (утилизация, вариант) или соперник (сброс). */
-const PROMPT_EFFECTS = new Set<Effect['type']>([EFFECT_TYPE.SCRAP, EFFECT_TYPE.CHOICE, EFFECT_TYPE.OPPONENT_DISCARD])
+const PROMPT_EFFECTS = new Set<Effect['type']>([
+  EFFECT_TYPE.SCRAP,
+  EFFECT_TYPE.CHOICE,
+  EFFECT_TYPE.OPPONENT_DISCARD,
+  EFFECT_TYPE.DESTROY_BASE,
+  EFFECT_TYPE.ACQUIRE_SHIP,
+  EFFECT_TYPE.DISCARD_DRAW,
+  // Копировать можно только корабль, уже сыгранный в этот ход, поэтому такая карта идёт после остальных.
+  EFFECT_TYPE.COPY_SHIP,
+])
 
 /**
  * Откроет ли розыгрыш карты запрос с выбором. Срабатывает базовая способность только у кораблей (база

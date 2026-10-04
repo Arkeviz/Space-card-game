@@ -7,25 +7,38 @@ import { RECT } from '../../../lib/rects'
 import PromptTimer from './PromptTimer.vue'
 
 /*
- * Сброс по требованию соперника. В отличие от остальных окон, не закрывает всё поле: затемнено всё, кроме руки,
- * потому что карту для сброса игрок выбирает прямо в руке, а здесь только подтверждает выбор.
+ * Сброс карты из руки: по требованию соперника (обязательный) или свой, до N карт с добором (необязательный).
+ * В отличие от остальных окон, не закрывает всё поле: затемнено всё, кроме руки, потому что карту для сброса
+ * игрок выбирает прямо в руке, а здесь только подтверждает выбор.
  */
 const props = defineProps<{
   source: CardInstance | null
   /** Выбранная в руке карта. */
   selected: CardInstance | null
   deadline: number | null
+  /** Свой необязательный сброс (Recycling Station): можно пропустить, а за каждую сброшенную карту берётся новая. */
+  optional?: boolean
+  /** Сколько карт ещё можно сбросить. */
+  remaining?: number
 }>()
 
-const emit = defineEmits<{ confirm: [] }>()
+const emit = defineEmits<{
+  confirm: []
+  skip: []
+}>()
 
 const handTop = RECT.SELF_HAND.y
 const handLeft = RECT.SELF_HAND.x - 2
 const handRight = RECT.SELF_HAND.x + RECT.SELF_HAND.w + 2
 
-const lead = computed(() => (props.source
-  ? `Так сработал «${cardName(props.source.cardId)}» соперника. Выберите карту в руке ниже.`
-  : 'Выберите карту в руке ниже.'))
+const title = computed(() => (props.optional ? `Сбросьте до ${props.remaining ?? 1} карт` : 'Сбросьте 1 карту из руки'))
+const lead = computed(() => {
+  if (props.optional)
+    return 'За каждую сброшенную карту вы возьмёте новую. Выберите карту в руке ниже или пропустите шаг.'
+  return props.source
+    ? `Так сработал «${cardName(props.source.cardId)}» соперника. Выберите карту в руке ниже.`
+    : 'Выберите карту в руке ниже.'
+})
 </script>
 
 <template>
@@ -34,16 +47,16 @@ const lead = computed(() => (props.source
     <div class="dim" :style="{ top: `${handTop}px`, left: 0, width: `${handLeft}px`, height: `${1080 - handTop}px` }" />
     <div class="dim" :style="{ top: `${handTop}px`, left: `${handRight}px`, width: `${1920 - handRight}px`, height: `${1080 - handTop}px` }" />
 
-    <section class="bar" role="dialog" aria-labelledby="discard-title">
+    <section class="bar" :class="{ 'bar--own': optional }" role="dialog" aria-labelledby="discard-title">
       <span class="bar__corner bar__corner--tl" />
       <span class="bar__corner bar__corner--br" />
       <CardThumb v-if="source" :card-id="source.cardId" :scale="0.36" />
       <div class="bar__text">
         <div class="bar__kind">
-          СБРОС · ОБЯЗАТЕЛЬНО
+          СБРОС · {{ optional ? 'ПО ЖЕЛАНИЮ' : 'ОБЯЗАТЕЛЬНО' }}
         </div>
         <h2 id="discard-title" class="bar__title">
-          Сбросьте 1 карту из руки
+          {{ title }}
         </h2>
         <p class="bar__lead">
           {{ lead }}
@@ -52,9 +65,12 @@ const lead = computed(() => (props.source
       <div class="bar__timer">
         <PromptTimer :deadline="deadline" />
         <div class="bar__fallback">
-          потом сбросится первая карта
+          {{ optional ? 'потом шаг пропустится' : 'потом сбросится первая карта' }}
         </div>
       </div>
+      <GameButton v-if="optional" variant="ghost" :height="56" @click="emit('skip')">
+        Пропустить
+      </GameButton>
       <GameButton :height="56" :disabled="!selected" @click="emit('confirm')">
         {{ selected ? `Сбросить «${cardName(selected.cardId)}»` : 'Выберите карту' }}
       </GameButton>
@@ -89,6 +105,24 @@ const lead = computed(() => (props.source
   box-shadow: inset 0 0 0 1px rgba(179, 156, 255, 0.55), 0 24px 60px rgba(0, 0, 0, 0.6);
   transform: translateX(-50%);
   pointer-events: auto;
+}
+
+.bar--own {
+  box-shadow: inset 0 0 0 1px rgba(79, 216, 255, 0.55), 0 24px 60px rgba(0, 0, 0, 0.6);
+}
+
+.bar--own .bar__kind {
+  color: var(--c-me);
+}
+
+.bar--own .bar__corner--tl {
+  border-top-color: var(--c-me);
+  border-left-color: var(--c-me);
+}
+
+.bar--own .bar__corner--br {
+  border-right-color: var(--c-me);
+  border-bottom-color: var(--c-me);
 }
 
 .bar__corner {

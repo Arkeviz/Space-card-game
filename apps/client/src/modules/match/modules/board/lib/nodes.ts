@@ -2,7 +2,7 @@ import type { CardInstance, Command, PlayedCard, ValueOf } from '@space/engine'
 import type { LegalIndex, TableState } from '../../table'
 import type { Pose } from './layout'
 import type { AbilityStatus, CardForm, CardVisualState } from '@/modules/cards'
-import { ABILITY_KIND, CARD_KIND, COMMAND_TYPE, getCard, PROMPT_KIND } from '@space/engine'
+import { ABILITY_KIND, CARD_KIND, COMMAND_TYPE, effectiveCard, getCard, PROMPT_KIND } from '@space/engine'
 import { ABILITY_STATUS, CARD_FORM, CARD_STATE, cardName } from '@/modules/cards'
 import { SIDE } from '../../table'
 import {
@@ -58,6 +58,8 @@ export interface CardNode {
   ally: AbilityStatus
   scrap: AbilityStatus
   zone: NodeZone
+  /** Карта скопировала другой корабль (Stealth Needle): cardId копируемой карты. */
+  copyOf?: string
   /** Подпись для скринридера; пусто у декоративных узлов. */
   label: string
   /** Что делает клик; null - карта не кликабельна. */
@@ -175,13 +177,15 @@ function tradeRowNodes(table: TableState, ctx: NodeContext): CardNode[] {
 }
 
 function abilityStatuses(entry: PlayedCard, mine: boolean, ctx: NodeContext): Pick<CardNode, 'basic' | 'ally' | 'scrap'> {
-  const card = getCard(entry.card.cardId)
+  // Способности у скопировавшего корабль (Stealth Needle) - как у копии; корабль или база - по самой карте.
+  const card = effectiveCard(entry)
+  const isShip = getCard(entry.card.cardId).kind === CARD_KIND.SHIP
   const abilities = ctx.legal.activations.get(entry.card.id)
   let basic: AbilityStatus = ABILITY_STATUS.AUTO
   let ally: AbilityStatus = ABILITY_STATUS.AUTO
 
   // Базовая способность корабля срабатывает при розыгрыше, поэтому подсвечивать и приглушать её нет смысла.
-  if (card.abilities[ABILITY_KIND.BASIC] && card.kind !== CARD_KIND.SHIP) {
+  if (card.abilities[ABILITY_KIND.BASIC] && !isShip) {
     if (entry.used[ABILITY_KIND.BASIC])
       basic = ABILITY_STATUS.USED
     else if (mine && abilities?.has(ABILITY_KIND.BASIC))
@@ -216,6 +220,7 @@ function fieldNodes(table: TableState, ctx: NodeContext, side: typeof SIDE.SELF 
     const name = cardName(entry.card.cardId)
     const card = getCard(entry.card.cardId)
     node.form = deployed ? CARD_FORM.DEPLOYED : CARD_FORM.CARD
+    node.copyOf = entry.copyOf
     node.decorative = false
     node.label = `«${name}» на столе`
     Object.assign(node, abilityStatuses(entry, mine, ctx))

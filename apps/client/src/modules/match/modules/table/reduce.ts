@@ -1,6 +1,6 @@
 import type { CardInstance, GameEvent, PlayerId, ScrapZone } from '@space/engine'
 import type { Side, TableSide, TableState } from './types'
-import { ABILITY_KIND, CARD_KIND, EVENT_TYPE, getCard, RESOURCE, SCRAP_ZONE } from '@space/engine'
+import { ABILITY_KIND, CARD_KIND, DESTINATION, EVENT_TYPE, getCard, RESOURCE, SCRAP_ZONE } from '@space/engine'
 import { SIDE } from './types'
 
 function clone<T>(value: T): T {
@@ -18,6 +18,13 @@ function countCards(cards: readonly CardInstance[]): Record<string, number> {
   // Ключи по алфавиту, как у сервера: тест сверяет стол со снимком через toEqual, а порядок ключей для него неважен,
   // но одинаковый порядок делает отладку по JSON предсказуемой.
   return Object.fromEntries(Object.entries(counts).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)))
+}
+
+/** Карта легла на верх колоды: счётчик растёт, а у себя ещё и состав колоды (порядок не известен никому). */
+function putOnDeckTop(side: TableSide, card: CardInstance): void {
+  side.deckCount += 1
+  if (side.deckContents)
+    side.deckContents[card.cardId] = (side.deckContents[card.cardId] ?? 0) + 1
 }
 
 function removeCard(list: CardInstance[], cardId: string): void {
@@ -103,7 +110,26 @@ export function reduceEvent(table: TableState, event: GameEvent): TableState {
         next.explorersCount -= 1
       else if (event.slot !== null)
         next.tradeRow[event.slot] = null
-      side.discard.push(event.card)
+      if (event.to === DESTINATION.DECK_TOP)
+        putOnDeckTop(side, event.card)
+      else
+        side.discard.push(event.card)
+      break
+    }
+
+    case EVENT_TYPE.CARD_ACQUIRED: {
+      if (event.from === 'explorers')
+        next.explorersCount -= 1
+      else if (event.slot !== null)
+        next.tradeRow[event.slot] = null
+      putOnDeckTop(next[sideOf(next, event.player)], event.card)
+      break
+    }
+
+    case EVENT_TYPE.SHIP_COPIED: {
+      const entry = next[sideOf(next, event.player)].inPlay.find(item => item.card.id === event.cardId)
+      if (entry)
+        entry.copyOf = event.copyOf
       break
     }
 

@@ -15,7 +15,7 @@ describe('describeStep', () => {
 
   it('розыгрыш корабля описывает его эффект, розыгрыш базы - прочность', () => {
     const ship = describeStep([{ type: EVENT_TYPE.CARD_PLAYED, player: 0, card: { id: 'a', cardId: 'cutter' } }], table, table)
-    expect(ship.entries[0]!.text).toBe('Разыграна «Катер»: +1 авторитета, +2 торговли')
+    expect(ship.entries[0]!.text).toBe('Разыграна «Катер»: +4 авторитета, +2 торговли')
     const base = describeStep([{ type: EVENT_TYPE.CARD_PLAYED, player: 1, card: { id: 'b', cardId: 'barter-world' } }], table, table)
     expect(base.entries[0]).toMatchObject({ mine: false, text: 'Разыграна «Мир бартера» - база, прочность 4' })
   })

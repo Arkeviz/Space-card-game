@@ -36,7 +36,7 @@ function playAndCompare(seed: number, steps: number): void {
 }
 
 describe('reduceEvent', () => {
-  it.each([1, 2, 3, 7, 42, 99])('события воспроизводят снимок сервера (seed %i)', (seed) => {
+  it.each(Array.from({ length: 30 }, (_, index) => index + 1))('события воспроизводят снимок сервера (seed %i)', (seed) => {
     playAndCompare(seed, 400)
   })
 

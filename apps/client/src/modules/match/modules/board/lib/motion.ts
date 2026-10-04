@@ -1,7 +1,7 @@
 import type { GameEvent, PlayerId } from '@space/engine'
 import type { TableState } from '../../table'
 import type { Pose } from './layout'
-import { EVENT_TYPE } from '@space/engine'
+import { DESTINATION, EVENT_TYPE } from '@space/engine'
 import { SIDE, sideOf } from '../../table'
 import {
   explorersPose,
@@ -96,6 +96,13 @@ export function motionFor(events: readonly GameEvent[], before: TableState): Mot
       case EVENT_TYPE.CARD_BOUGHT:
         if (event.from === 'explorers')
           motion.spawn.set(event.card.id, { from: explorersPose(layoutOf(before).trade), faceDown: false })
+        // Корабль на верх колоды: карта улетает в колоду и пропадает, а не ложится на сброс.
+        if (event.to === DESTINATION.DECK_TOP)
+          motion.exit.set(event.card.id, { ...deckPose(before, event.player), opacity: 0 })
+        break
+
+      case EVENT_TYPE.CARD_ACQUIRED:
+        motion.exit.set(event.card.id, { ...deckPose(before, event.player), opacity: 0 })
         break
 
       case EVENT_TYPE.TRADE_ROW_REFILLED:

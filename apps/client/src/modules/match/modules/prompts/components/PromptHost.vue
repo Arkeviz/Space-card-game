@@ -10,6 +10,7 @@ import { computed } from 'vue'
 import { findSourceCard } from '../lib/prompt-info'
 import ChoicePrompt from './ChoicePrompt.vue'
 import DiscardPrompt from './DiscardPrompt.vue'
+import PickCardPrompt from './PickCardPrompt.vue'
 import ScrapPrompt from './ScrapPrompt.vue'
 
 const props = defineProps<{
@@ -46,6 +47,7 @@ function skip(): void {
   <template v-if="prompt">
     <ChoicePrompt
       v-if="prompt.kind === PROMPT_KIND.CHOICE"
+      :key="prompt.id"
       :table="table"
       :options="prompt.options"
       :source="source"
@@ -54,10 +56,25 @@ function skip(): void {
     />
     <ScrapPrompt
       v-else-if="prompt.kind === PROMPT_KIND.SCRAP"
+      :key="prompt.id"
       :table="table"
       :legal="legal"
       :zones="prompt.zones"
       :optional="prompt.optional"
+      :remaining="prompt.remaining"
+      :draw-per-scrap="prompt.drawPerScrap"
+      :source="source"
+      :deadline="deadline"
+      @choose="chooseCard"
+      @skip="skip"
+    />
+    <PickCardPrompt
+      v-else-if="prompt.kind === PROMPT_KIND.DESTROY_BASE || prompt.kind === PROMPT_KIND.ACQUIRE_SHIP || prompt.kind === PROMPT_KIND.COPY_SHIP"
+      :key="prompt.id"
+      :table="table"
+      :legal="legal"
+      :kind="prompt.kind"
+      :optional="prompt.kind === PROMPT_KIND.DESTROY_BASE && prompt.optional"
       :source="source"
       :deadline="deadline"
       @choose="chooseCard"
@@ -65,10 +82,14 @@ function skip(): void {
     />
     <DiscardPrompt
       v-else
+      :key="prompt.id"
       :source="source"
       :selected="selectedCard"
       :deadline="deadline"
+      :optional="prompt.optional"
+      :remaining="prompt.remaining"
       @confirm="selectedCard && chooseCard(selectedCard.id)"
+      @skip="skip"
     />
   </template>
 </template>
