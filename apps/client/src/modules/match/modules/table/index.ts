@@ -1,0 +1,7 @@
+export { buildTable } from './build'
+export { indexLegalActions } from './legal-index'
+export type { LegalIndex } from './legal-index'
+export { cardOpensPrompt, nextCardToPlay } from './play-all'
+export { reduceEvent, sideOf } from './reduce'
+export { SIDE } from './types'
+export type { Side, TableSide, TableState } from './types'
