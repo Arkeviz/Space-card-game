@@ -1,8 +1,7 @@
 import type { Command, GameState, PlayerId } from '../types/index.ts'
-import { getCard } from '../data/cards.ts'
 import { ABILITY_KIND, COMMAND_TYPE, PROMPT_KIND, RESOURCE } from '../types/index.ts'
 import { apply } from './apply.ts'
-import { other, scrapCandidates } from './effects.ts'
+import { acquireCandidates, copyCandidates, destroyCandidates, effectiveCard, other, scrapCandidates } from './effects.ts'
 
 function promptCandidates(state: GameState): Command[] {
   const prompt = state.prompt!
@@ -10,8 +9,18 @@ function promptCandidates(state: GameState): Command[] {
 
   if (prompt.kind === PROMPT_KIND.CHOICE)
     return prompt.options.map((_, index) => ({ type: COMMAND_TYPE.CHOOSE_OPTION, promptId, index }))
-  if (prompt.kind === PROMPT_KIND.DISCARD)
-    return state.players[prompt.player].hand.map(card => ({ type: COMMAND_TYPE.CHOOSE_CARD, promptId, cardId: card.id }))
+  if (prompt.kind === PROMPT_KIND.DISCARD) {
+    const cards: Command[] = state.players[prompt.player].hand.map(card => ({ type: COMMAND_TYPE.CHOOSE_CARD, promptId, cardId: card.id }))
+    return prompt.optional ? [...cards, { type: COMMAND_TYPE.SKIP, promptId }] : cards
+  }
+  if (prompt.kind === PROMPT_KIND.DESTROY_BASE) {
+    const cards: Command[] = destroyCandidates(state, prompt.player).map(card => ({ type: COMMAND_TYPE.CHOOSE_CARD, promptId, cardId: card.id }))
+    return prompt.optional ? [...cards, { type: COMMAND_TYPE.SKIP, promptId }] : cards
+  }
+  if (prompt.kind === PROMPT_KIND.ACQUIRE_SHIP)
+    return acquireCandidates(state).map(({ card }) => ({ type: COMMAND_TYPE.CHOOSE_CARD, promptId, cardId: card.id }))
+  if (prompt.kind === PROMPT_KIND.COPY_SHIP)
+    return copyCandidates(state, prompt.player, prompt.source).map(entry => ({ type: COMMAND_TYPE.CHOOSE_CARD, promptId, cardId: entry.card.id }))
 
   const cards: Command[] = scrapCandidates(state, prompt.player, prompt.zones)
     .map(({ card }) => ({ type: COMMAND_TYPE.CHOOSE_CARD, promptId, cardId: card.id }))
@@ -32,11 +41,12 @@ function turnCandidates(state: GameState, player: PlayerId): Command[] {
   }
   commands.push({ type: COMMAND_TYPE.BUY_EXPLORER })
 
-  for (const { card } of me.inPlay) {
-    const { abilities } = getCard(card.cardId)
+  for (const entry of me.inPlay) {
+    // У Stealth Needle способности те же, что у скопированного корабля.
+    const { abilities } = effectiveCard(entry)
     for (const ability of Object.values(ABILITY_KIND)) {
       if (abilities[ability])
-        commands.push({ type: COMMAND_TYPE.ACTIVATE, cardId: card.id, ability })
+        commands.push({ type: COMMAND_TYPE.ACTIVATE, cardId: entry.card.id, ability })
     }
   }
 

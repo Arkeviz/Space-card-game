@@ -61,3 +61,23 @@ type Command
 чей сейчас ход и открыт ли prompt. Сервер применяет её сам по истечении таймаута отключения (см. `apps/server`);
 тем же способом можно завести кнопку «сдаться» в UI - это одна команда на оба случая.
 В `legalActions` не входит - это не обычное игровое действие.
+
+## Эффекты карт и запросы выбора
+
+Каталог (`data/cards.ts`) - это 80 карт базового набора плюс стартовые карты и Исследователи; состав Торговой колоды - `TRADE_DECK_COMPOSITION` в `data/config.ts`. Значения записаны по памяти и не сверены с физической игрой (см. TODO в начале каталога).
+
+Эффект (`Effect`) либо выполняется сразу (`GAIN`, `DRAW`, `SHIP_TO_DECK_TOP`, `DRAW_IF_BASES`, `DRAW_PER_PLAYED`), либо открывает prompt и ждёт ответа игрока (остаток цепочки хранится в `state.continuation`):
+
+| Эффект | Prompt | Ответ |
+| --- | --- | --- |
+| `CHOICE` | `CHOICE` | `CHOOSE_OPTION` |
+| `SCRAP` (`repeat`, `drawPerScrap`) | `SCRAP` | `CHOOSE_CARD` или `SKIP`, если необязательный; при `repeat` запрос повторяется |
+| `OPPONENT_DISCARD` | `DISCARD` у соперника | `CHOOSE_CARD` |
+| `DISCARD_DRAW` | `DISCARD` (`optional`, `remaining`, `drawPerDiscard`) | `CHOOSE_CARD` или `SKIP` |
+| `DESTROY_BASE` | `DESTROY_BASE` | `CHOOSE_CARD`, `SKIP` если `optional` |
+| `ACQUIRE_SHIP` | `ACQUIRE_SHIP` | `CHOOSE_CARD` (корабль ряда или верхний Исследователь) |
+| `COPY_SHIP` | `COPY_SHIP` | `CHOOSE_CARD` (другой корабль, сыгранный в этот ход) |
+
+Постоянные свойства (`Card.passives`) не активируются: `ALL_FACTIONS` (Mech World считается союзником всех фракций) и `SHIP_COMBAT_BONUS` (Fleet HQ: каждый корабль, сыгранный после него, даёт +1 атаки; уже сыгранные корабли бонус не получают).
+
+Упрощения: «положите следующий корабль на верх колоды» (`nextShipToDeckTop`) срабатывает автоматически, без вопроса «можете»; «возьмите карту за каждую утилизированную/сброшенную» берётся сразу после каждой карты, а не пачкой в конце. Stealth Needle запоминает скопированную карту в `PlayedCard.copyOf`: способности и фракции считаются по ней (`effectiveCard`).

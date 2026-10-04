@@ -9,6 +9,8 @@ export type AbilityUsage = Record<UsableAbility, boolean>
 export interface PlayedCard {
   card: CardInstance
   used: AbilityUsage
+  /** Карта скопировала другой корабль (Stealth Needle): cardId копируемой карты. */
+  copyOf?: string
 }
 
 export interface PlayerState {
@@ -23,8 +25,15 @@ export interface PlayerState {
 
 export type PromptSpec
   = | { kind: typeof PROMPT_KIND.CHOICE, player: PlayerId, source: string | null, options: Effect[][] }
-    | { kind: typeof PROMPT_KIND.DISCARD, player: PlayerId, source: string | null }
-    | { kind: typeof PROMPT_KIND.SCRAP, player: PlayerId, source: string | null, zones: ScrapZone[], optional: boolean }
+  /**
+   * Сброс карты из руки. Обязательный - по требованию соперника; необязательный (optional) - свой сброс
+   * до remaining карт, после каждой можно взять по карте (drawPerDiscard).
+   */
+    | { kind: typeof PROMPT_KIND.DISCARD, player: PlayerId, source: string | null, optional?: boolean, remaining?: number, drawPerDiscard?: boolean }
+    | { kind: typeof PROMPT_KIND.SCRAP, player: PlayerId, source: string | null, zones: ScrapZone[], optional: boolean, remaining?: number, drawPerScrap?: boolean }
+    | { kind: typeof PROMPT_KIND.DESTROY_BASE, player: PlayerId, source: string | null, optional: boolean }
+    | { kind: typeof PROMPT_KIND.ACQUIRE_SHIP, player: PlayerId, source: string | null }
+    | { kind: typeof PROMPT_KIND.COPY_SHIP, player: PlayerId, source: string | null }
 
 /** Запрос выбора. Пока он открыт, разрешены только ответы игрока prompt.player. */
 export type Prompt = PromptSpec & { id: number }
@@ -46,6 +55,10 @@ export interface GameState {
   tradeRow: (CardInstance | null)[]
   explorers: CardInstance[]
   scrapHeap: CardInstance[]
+  /** Следующий корабль, полученный в этот ход, ляжет на верх колоды (Freighter, Central Office). */
+  nextShipToDeckTop: boolean
+  /** cardId всех карт, сыгранных текущим игроком в этот ход (для эффектов «за каждую сыгранную карту»). */
+  playedThisTurn: string[]
   prompt: Prompt | null
   /** Эффекты, которые надо выполнить после ответа на prompt. */
   continuation: Effect[]

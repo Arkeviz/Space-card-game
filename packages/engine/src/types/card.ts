@@ -1,4 +1,4 @@
-import type { AbilityKind, CardKind, EFFECT_TYPE, Faction, Resource, ScrapZone } from './constants.ts'
+import type { AbilityKind, CardKind, EFFECT_TYPE, Faction, PASSIVE_TYPE, Resource, ScrapZone } from './constants.ts'
 
 /** Описание эффекта карты. Эффекты выполняются по порядку; часть из них требует выбора игрока (prompt). */
 export type Effect
@@ -6,10 +6,24 @@ export type Effect
     | { type: typeof EFFECT_TYPE.DRAW, amount: number }
   /** Соперник сам выбирает и сбрасывает карты из руки. */
     | { type: typeof EFFECT_TYPE.OPPONENT_DISCARD, amount: number }
-  /** Утилизация одной карты из указанных зон. Если кандидатов нет, эффект пропускается. */
-    | { type: typeof EFFECT_TYPE.SCRAP, from: ScrapZone[], optional: boolean }
+  /**
+   * Утилизация карты из указанных зон. Если кандидатов нет, эффект пропускается. repeat - сколько карт можно
+   * утилизировать подряд (по умолчанию одну), drawPerScrap - брать карту за каждую утилизированную.
+   */
+    | { type: typeof EFFECT_TYPE.SCRAP, from: ScrapZone[], optional: boolean, repeat?: number, drawPerScrap?: boolean }
   /** Игрок выбирает один из вариантов. */
     | { type: typeof EFFECT_TYPE.CHOICE, options: Effect[][] }
+    | { type: typeof EFFECT_TYPE.DESTROY_BASE, optional: boolean }
+    | { type: typeof EFFECT_TYPE.ACQUIRE_SHIP }
+    | { type: typeof EFFECT_TYPE.SHIP_TO_DECK_TOP }
+    | { type: typeof EFFECT_TYPE.DRAW_IF_BASES, minBases: number, amount: number }
+    | { type: typeof EFFECT_TYPE.DRAW_PER_PLAYED, faction: Faction }
+    | { type: typeof EFFECT_TYPE.DISCARD_DRAW, max: number }
+    | { type: typeof EFFECT_TYPE.COPY_SHIP }
+
+export type Passive
+  = | { type: typeof PASSIVE_TYPE.ALL_FACTIONS }
+    | { type: typeof PASSIVE_TYPE.SHIP_COMBAT_BONUS, amount: number }
 
 export interface Card {
   id: string
@@ -25,6 +39,8 @@ export interface Card {
    * scrap: карта уходит в свалку, эффект срабатывает.
    */
   abilities: Partial<Record<AbilityKind, Effect[]>>
+  /** Постоянные свойства, работающие, пока карта на столе. */
+  passives?: Passive[]
 }
 
 /** Конкретная карта на столе. id стабилен всю партию и присваивается до перемешивания. */

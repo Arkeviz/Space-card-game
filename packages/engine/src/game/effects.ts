@@ -1,6 +1,7 @@
 import type { Rng } from '../lib/rng.ts'
-import type { AbilityUsage, CardInstance, Effect, GameEvent, GameState, PlayerId, Pools, PromptSpec, Resource, ScrapZone, SpendableResource } from '../types/index.ts'
-import { ABILITY_KIND, EFFECT_TYPE, EVENT_TYPE, PROMPT_KIND, RESOURCE, SCRAP_ZONE } from '../types/index.ts'
+import type { AbilityUsage, Card, CardInstance, Effect, Faction, GameEvent, GameState, PassiveType, PlayedCard, PlayerId, PlayerState, Pools, PromptSpec, Resource, ScrapZone, SpendableResource } from '../types/index.ts'
+import { getCard } from '../data/cards.ts'
+import { ABILITY_KIND, CARD_KIND, EFFECT_TYPE, EVENT_TYPE, FACTION, PASSIVE_TYPE, PROMPT_KIND, RESOURCE, SCRAP_ZONE } from '../types/index.ts'
 
 /** Изменяемый контекст выполнения одной команды: apply работает над клоном состояния. */
 export interface Ctx {
@@ -115,7 +116,115 @@ export function scrapChosenCard(ctx: Ctx, actor: PlayerId, cardId: string, zones
   return true
 }
 
-function openPrompt(ctx: Ctx, spec: PromptSpec, rest: Effect[]): void {
+/* ---------- Карты на столе: эффективная карта, фракции, постоянные свойства ---------- */
+
+/** Карта, по которой работают способности: у скопировавшей корабль (Stealth Needle) это копируемая карта. */
+export function effectiveCard(entry: PlayedCard): Card {
+  return getCard(entry.copyOf ?? entry.card.cardId)
+}
+
+/** База или аванпост (не корабль). */
+export function isBaseLike(entry: PlayedCard): boolean {
+  return getCard(entry.card.cardId).kind !== CARD_KIND.SHIP
+}
+
+/** Фракции карты на столе: своя плюс скопированная; нейтральная фракция союзников не даёт. */
+function factionsOf(entry: PlayedCard): Faction[] {
+  const own = getCard(entry.card.cardId).faction
+  const copied = entry.copyOf ? getCard(entry.copyOf).faction : own
+  return [...new Set([own, copied])].filter(faction => faction !== FACTION.NEUTRAL)
+}
+
+export function hasPassive(entries: readonly PlayedCard[], type: PassiveType): boolean {
+  return entries.some(entry => getCard(entry.card.cardId).passives?.some(passive => passive.type === type))
+}
+
+/** Есть ли в игре другая карта той же фракции (условие способности союзника). */
+export function hasAlly(player: PlayerState, played: PlayedCard): boolean {
+  const mine = factionsOf(played)
+  if (mine.length === 0)
+    return false
+  const others = player.inPlay.filter(entry => entry !== played)
+  // Mech World считается союзником для всех фракций.
+  if (hasPassive(others, PASSIVE_TYPE.ALL_FACTIONS))
+    return true
+  return others.some(entry => factionsOf(entry).some(faction => mine.includes(faction)))
+}
+
+/* ---------- Цели эффектов ---------- */
+
+/** Базы и аванпосты соперника: уничтожить эффектом можно любую, аванпосты от эффектов не защищают. */
+export function destroyCandidates(state: GameState, actor: PlayerId): CardInstance[] {
+  return state.players[other(actor)].inPlay.filter(isBaseLike).map(entry => entry.card)
+}
+
+export interface AcquireCandidate {
+  card: CardInstance
+  from: 'trade-row' | 'explorers'
+  slot: number | null
+}
+
+/** Корабли, которые можно получить бесплатно: из Торгового ряда и верхний Исследователь. */
+export function acquireCandidates(state: GameState): AcquireCandidate[] {
+  const result: AcquireCandidate[] = []
+  state.tradeRow.forEach((card, slot) => {
+    if (card && getCard(card.cardId).kind === CARD_KIND.SHIP)
+      result.push({ card, from: 'trade-row', slot })
+  })
+  const explorer = state.explorers[0]
+  if (explorer)
+    result.push({ card: explorer, from: 'explorers', slot: null })
+  return result
+}
+
+/** Корабли, сыгранные в этот ход (кроме самой копирующей карты): их можно скопировать. */
+export function copyCandidates(state: GameState, actor: PlayerId, sourceId: string | null): PlayedCard[] {
+  return state.players[actor].inPlay.filter(entry => !isBaseLike(entry) && entry.card.id !== sourceId)
+}
+
+export function destroyBase(ctx: Ctx, actor: PlayerId, cardId: string): boolean {
+  const opponent = ctx.state.players[other(actor)]
+  const target = opponent.inPlay.find(entry => entry.card.id === cardId && isBaseLike(entry))
+  if (!target)
+    return false
+  opponent.inPlay = opponent.inPlay.filter(entry => entry !== target)
+  opponent.discard.push(target.card)
+  ctx.events.push({ type: EVENT_TYPE.BASE_DESTROYED, owner: other(actor), card: target.card })
+  return true
+}
+
+/** Получает корабль бесплатно и кладёт его на верх колоды игрока. */
+export function acquireShip(ctx: Ctx, actor: PlayerId, cardId: string): boolean {
+  const { state } = ctx
+  const candidate = acquireCandidates(state).find(item => item.card.id === cardId)
+  if (!candidate)
+    return false
+  if (candidate.from === 'explorers')
+    state.explorers.shift()
+  else
+    state.tradeRow[candidate.slot!] = null
+  state.players[actor].deck.unshift(candidate.card)
+  ctx.events.push({ type: EVENT_TYPE.CARD_ACQUIRED, player: actor, card: candidate.card, from: candidate.from, slot: candidate.slot })
+  if (candidate.slot !== null)
+    refillTradeRow(ctx, candidate.slot)
+  return true
+}
+
+/** Копирует корабль: возвращает его базовые эффекты, которые нужно выполнить, или null, если цели нет. */
+export function copyShip(ctx: Ctx, actor: PlayerId, sourceId: string | null, targetCardId: string): Effect[] | null {
+  const own = ctx.state.players[actor].inPlay.find(entry => entry.card.id === sourceId)
+  const target = copyCandidates(ctx.state, actor, sourceId).find(entry => entry.card.id === targetCardId)
+  if (!own || !target)
+    return null
+  const copied = effectiveCard(target)
+  own.copyOf = copied.id
+  ctx.events.push({ type: EVENT_TYPE.SHIP_COPIED, player: actor, cardId: own.card.id, copyOf: copied.id })
+  return copied.abilities[ABILITY_KIND.BASIC] ?? []
+}
+
+/* ---------- Запросы выбора ---------- */
+
+export function openPrompt(ctx: Ctx, spec: PromptSpec, rest: Effect[]): void {
   const { state } = ctx
   state.promptCounter += 1
   state.prompt = { ...spec, id: state.promptCounter }
@@ -164,10 +273,43 @@ export function resolveEffects(ctx: Ctx, effects: readonly Effect[], source: str
       case EFFECT_TYPE.SCRAP:
         if (scrapCandidates(state, actor, effect.from).length === 0)
           break
-        openPrompt(ctx, { kind: PROMPT_KIND.SCRAP, player: actor, source, zones: effect.from, optional: effect.optional }, rest)
+        openPrompt(ctx, { kind: PROMPT_KIND.SCRAP, player: actor, source, zones: effect.from, optional: effect.optional, remaining: effect.repeat, drawPerScrap: effect.drawPerScrap }, rest)
         return
       case EFFECT_TYPE.CHOICE:
         openPrompt(ctx, { kind: PROMPT_KIND.CHOICE, player: actor, source, options: effect.options }, rest)
+        return
+      case EFFECT_TYPE.DESTROY_BASE:
+        if (destroyCandidates(state, actor).length === 0)
+          break
+        openPrompt(ctx, { kind: PROMPT_KIND.DESTROY_BASE, player: actor, source, optional: effect.optional }, rest)
+        return
+      case EFFECT_TYPE.ACQUIRE_SHIP:
+        if (acquireCandidates(state).length === 0)
+          break
+        openPrompt(ctx, { kind: PROMPT_KIND.ACQUIRE_SHIP, player: actor, source }, rest)
+        return
+      case EFFECT_TYPE.SHIP_TO_DECK_TOP:
+        state.nextShipToDeckTop = true
+        break
+      case EFFECT_TYPE.DRAW_IF_BASES:
+        if (state.players[actor].inPlay.filter(isBaseLike).length >= effect.minBases)
+          drawCards(ctx, actor, effect.amount)
+        break
+      case EFFECT_TYPE.DRAW_PER_PLAYED: {
+        const played = state.playedThisTurn.filter(cardId => getCard(cardId).faction === effect.faction).length
+        if (played > 0)
+          drawCards(ctx, actor, played)
+        break
+      }
+      case EFFECT_TYPE.DISCARD_DRAW:
+        if (state.players[actor].hand.length === 0)
+          break
+        openPrompt(ctx, { kind: PROMPT_KIND.DISCARD, player: actor, source, optional: true, remaining: effect.max, drawPerDiscard: true }, rest)
+        return
+      case EFFECT_TYPE.COPY_SHIP:
+        if (copyCandidates(state, actor, source).length === 0)
+          break
+        openPrompt(ctx, { kind: PROMPT_KIND.COPY_SHIP, player: actor, source }, rest)
         return
     }
   }

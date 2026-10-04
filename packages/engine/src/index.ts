@@ -8,6 +8,7 @@ export {
   TRADE_ROW_SIZE,
 } from './data/config.ts'
 export { apply } from './game/apply.ts'
+export { effectiveCard } from './game/effects.ts'
 export { legalActions } from './game/legal.ts'
 export { redact, redactEvents } from './game/redact.ts'
 export { createGame } from './game/setup.ts'

@@ -59,6 +59,8 @@ export function createGame(seed: number, options: CreateGameOptions = {}): GameS
     tradeRow,
     explorers,
     scrapHeap: [],
+    nextShipToDeckTop: false,
+    playedThisTurn: [],
     prompt: null,
     continuation: [],
     winner: null,

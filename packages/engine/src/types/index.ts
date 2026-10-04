@@ -1,4 +1,4 @@
-export type { Card, CardInstance, Effect } from './card.ts'
+export type { Card, CardInstance, Effect, Passive } from './card.ts'
 export type { ApplyResult, Command } from './command.ts'
 export * from './constants.ts'
 export type { GameEvent } from './event.ts'

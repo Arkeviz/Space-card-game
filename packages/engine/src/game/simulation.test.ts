@@ -62,7 +62,7 @@ function simulate(seed: number, steps: number): Playthrough {
 }
 
 describe('случайные партии', () => {
-  it.each([1, 2, 3, 4, 5])('сид %i: карты сохраняются, тупиков нет, состояние сериализуется', (seed) => {
+  it.each(Array.from({ length: 30 }, (_, index) => index + 1))('сид %i: карты сохраняются, тупиков нет, состояние сериализуется', (seed) => {
     const { final } = simulate(seed, 400)
     expect(final.turn).toBeGreaterThan(1)
   })

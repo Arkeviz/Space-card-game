@@ -48,6 +48,20 @@ export const EFFECT_TYPE = {
   OPPONENT_DISCARD: 'opponent-discard',
   SCRAP: 'scrap',
   CHOICE: 'choice',
+  /** Уничтожить базу или аванпост соперника без затрат атаки. */
+  DESTROY_BASE: 'destroy-base',
+  /** Получить любой корабль (из ряда или исследователя) бесплатно и положить на верх своей колоды. */
+  ACQUIRE_SHIP: 'acquire-ship',
+  /** Следующий корабль, полученный в этот ход, кладётся на верх колоды вместо сброса. */
+  SHIP_TO_DECK_TOP: 'ship-to-deck-top',
+  /** Взять карты, если в игре достаточно баз. */
+  DRAW_IF_BASES: 'draw-if-bases',
+  /** Взять по карте за каждую карту фракции, сыгранную в этот ход. */
+  DRAW_PER_PLAYED: 'draw-per-played',
+  /** Сбросить из руки до N карт и взять столько же. */
+  DISCARD_DRAW: 'discard-draw',
+  /** Скопировать другой корабль, сыгранный в этот ход. */
+  COPY_SHIP: 'copy-ship',
 } as const
 export type EffectType = ValueOf<typeof EFFECT_TYPE>
 
@@ -55,6 +69,9 @@ export const PROMPT_KIND = {
   CHOICE: 'choice',
   DISCARD: 'discard',
   SCRAP: 'scrap',
+  DESTROY_BASE: 'destroy-base',
+  ACQUIRE_SHIP: 'acquire-ship',
+  COPY_SHIP: 'copy-ship',
 } as const
 export type PromptKind = ValueOf<typeof PROMPT_KIND>
 
@@ -96,6 +113,8 @@ export const EVENT_TYPE = {
   CARDS_DRAWN: 'cards-drawn',
   CARD_PLAYED: 'card-played',
   CARD_BOUGHT: 'card-bought',
+  CARD_ACQUIRED: 'card-acquired',
+  SHIP_COPIED: 'ship-copied',
   TRADE_ROW_REFILLED: 'trade-row-refilled',
   ABILITY_ACTIVATED: 'ability-activated',
   RESOURCE_GAINED: 'resource-gained',
@@ -111,6 +130,22 @@ export const EVENT_TYPE = {
   GAME_OVER: 'game-over',
 } as const
 export type EventType = ValueOf<typeof EVENT_TYPE>
+
+/** Куда попадает купленная карта: обычно в сброс, а при SHIP_TO_DECK_TOP - на верх колоды. */
+export const DESTINATION = {
+  DISCARD: 'discard',
+  DECK_TOP: 'deck-top',
+} as const
+export type Destination = ValueOf<typeof DESTINATION>
+
+/** Постоянные свойства карт на столе (не способности: их не нужно активировать). */
+export const PASSIVE_TYPE = {
+  /** Считается союзником для всех фракций. */
+  ALL_FACTIONS: 'all-factions',
+  /** Каждый сыгранный корабль даёт дополнительную атаку. */
+  SHIP_COMBAT_BONUS: 'ship-combat-bonus',
+} as const
+export type PassiveType = ValueOf<typeof PASSIVE_TYPE>
 
 /** Ресурсы, которые копятся в пуле хода (авторитет хранится у игрока). */
 export type SpendableResource = Exclude<Resource, typeof RESOURCE.AUTHORITY>
