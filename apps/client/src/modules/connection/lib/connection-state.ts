@@ -1,5 +1,5 @@
 import type { Command, CommandError, GameEvent, PlayerId, PlayerView } from '@space/engine'
-import type { MatchError, ServerMessage } from '@space/protocol'
+import type { MatchError, ServerMessage, UpdateMessage } from '@space/protocol'
 import { SERVER_MESSAGE } from '@space/protocol'
 
 export type CommandResult
@@ -11,6 +11,8 @@ export interface ReconnectInfo {
   matchId: string
   token: string
 }
+
+export type UpdateListener = (update: UpdateMessage) => void
 
 /**
  * Состояние подключения к матчу. Не знает ни о WebSocket, ни о Vue - только применяет входящие сообщения
@@ -25,7 +27,11 @@ export class ConnectionState {
   legalActions: Command[] = []
   lastEvents: GameEvent[] = []
   lastError: MatchError | null = null
+  /** Сколько мс до автодействия сервера было на момент последнего update; отсчитывать от updatedAt. */
+  turnTimeLeftMs: number | null = null
+  updatedAt = 0
 
+  private readonly updateListeners = new Set<UpdateListener>()
   private readonly pending = new Map<string, (result: CommandResult) => void>()
 
   /** Возвращает данные для переподключения, только если пришёл JOINED. */
@@ -43,7 +49,11 @@ export class ConnectionState {
         this.view = message.view
         this.legalActions = message.legalActions
         this.lastEvents = message.events
+        this.turnTimeLeftMs = message.turnTimeLeftMs
+        this.updatedAt = Date.now()
         this.opponentConnected = true
+        for (const listener of this.updateListeners)
+          listener(message)
         return null
 
       case SERVER_MESSAGE.ACK:
@@ -58,6 +68,26 @@ export class ConnectionState {
         this.lastError = message.reason
         return null
     }
+  }
+
+  /** Подписка на каждый update целиком (с событиями): нужна экрану матча, чтобы анимировать события по очереди. */
+  subscribeUpdates(listener: UpdateListener): () => void {
+    this.updateListeners.add(listener)
+    return () => this.updateListeners.delete(listener)
+  }
+
+  /** Выход из матча (кнопка «новый матч»): забываем всё, что относилось к нему. */
+  leave(): void {
+    this.you = null
+    this.matchId = null
+    this.code = null
+    this.opponentConnected = false
+    this.view = null
+    this.legalActions = []
+    this.lastEvents = []
+    this.lastError = null
+    this.turnTimeLeftMs = null
+    this.rejectAllPending()
   }
 
   registerPending(commandId: string, resolve: (result: CommandResult) => void): void {

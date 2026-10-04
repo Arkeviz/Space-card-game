@@ -1,10 +1,10 @@
 import type { Command } from '@space/engine'
 import type { ClientMessage, ServerMessage } from '@space/protocol'
-import type { App, InjectionKey } from 'vue'
-import type { CommandResult } from '../lib/connection-state'
+import type { App, ComputedRef, InjectionKey } from 'vue'
+import type { CommandResult, UpdateListener } from '../lib/connection-state'
 import { CLIENT_MESSAGE, HEARTBEAT } from '@space/protocol'
 import { useIntervalFn, useWebSocket } from '@vueuse/core'
-import { inject, reactive, watch } from 'vue'
+import { computed, inject, reactive, watch } from 'vue'
 import { ConnectionState } from '../lib/connection-state'
 
 const STORAGE_KEY = 'space-card-game:reconnect'
@@ -54,11 +54,17 @@ export interface GameConnection {
   /** Реактивное состояние подключения (view, legalActions, ошибки и т. п.). */
   state: ConnectionState
   status: ReturnType<typeof useWebSocket>['status']
+  /** Соединение с сервером открыто. */
+  online: ComputedRef<boolean>
   createMatch: () => void
   joinMatch: (code: string) => void
   /** Разрешается ack'ом ({ ok: true }) или reject'ом/разрывом связи ({ ok: false, reason }). */
   submitCommand: (command: Command) => Promise<CommandResult>
   sync: () => void
+  /** Покинуть матч и вернуться в состояние лобби. */
+  leaveMatch: () => void
+  /** Подписка на каждый update с событиями (в отличие от state.view, который хранит только последний). Возвращает отписку. */
+  onUpdate: (listener: UpdateListener) => () => void
 }
 
 /**
@@ -114,6 +120,7 @@ export function createGameConnection(wsUrl: string): GameConnection {
   return {
     state,
     status: socket.status,
+    online: computed(() => socket.status.value === 'OPEN'),
     createMatch: () => send({ type: CLIENT_MESSAGE.CREATE_MATCH }),
     joinMatch: code => send({ type: CLIENT_MESSAGE.JOIN_MATCH, code }),
     submitCommand: command => new Promise<CommandResult>((resolve) => {
@@ -122,6 +129,11 @@ export function createGameConnection(wsUrl: string): GameConnection {
       send({ type: CLIENT_MESSAGE.COMMAND, commandId, command })
     }),
     sync: () => send({ type: CLIENT_MESSAGE.SYNC }),
+    leaveMatch: () => {
+      state.leave()
+      writeStoredReconnect(null)
+    },
+    onUpdate: listener => state.subscribeUpdates(listener),
   }
 }
 
