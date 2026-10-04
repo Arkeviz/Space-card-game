@@ -1,0 +1,88 @@
+/* Токены интерфейса: значения взяты из дизайна «Звёздные империи - интерфейс» (артборды Main, Card, Lobby). */
+:root {
+  --c-bg: #060a14;
+  --c-surface: #0a1020;
+  --c-surface-raised: #0b1222;
+  --c-text: #e6eeff;
+  --c-text-strong: #f4f7ff;
+  --c-text-soft: #b8c7e6;
+  --c-text-quiet: #c9d6f0;
+  --c-muted: #8fa3c8;
+  --c-dim: #7d8fb5;
+  --c-line: rgba(143, 163, 200, 0.25);
+
+  --c-me: #4fd8ff;
+  --c-me-ink: #04131a;
+  --c-opponent: #b39cff;
+
+  --c-trade: #ffc23d;
+  --c-combat: #ff5a4f;
+  --c-authority: #3fe0a0;
+
+  --font-display: 'Unbounded', sans-serif;
+  --font-text: 'IBM Plex Sans Condensed', 'Arial Narrow', sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+
+  color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  overflow: hidden;
+  background: var(--c-bg);
+  color: var(--c-text);
+  font-family: var(--font-text);
+}
+
+button {
+  font: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--c-me);
+  outline-offset: 2px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Фон «звёздной карты»: тонкая сетка и мягкое свечение, общий для лобби и поля матча. */
+.space-backdrop {
+  background-color: var(--c-bg);
+  background-image:
+    radial-gradient(ellipse 70% 60% at 50% 50%, rgba(30, 58, 120, 0.3) 0%, rgba(6, 10, 20, 0) 70%),
+    linear-gradient(rgba(79, 216, 255, 0.035) 1px, rgba(79, 216, 255, 0) 1px),
+    linear-gradient(90deg, rgba(79, 216, 255, 0.035) 1px, rgba(79, 216, 255, 0) 1px);
+  background-size:
+    100% 100%,
+    48px 48px,
+    48px 48px;
+}
+
+/* Подпись-метка: моноширинный капс с разрядкой. Размер и цвет задаёт компонент. */
+.mono-label {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  text-transform: uppercase;
+}

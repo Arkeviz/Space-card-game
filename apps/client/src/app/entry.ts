@@ -5,6 +5,7 @@ import { appConfig } from './app-config'
 import { setupGsap } from './integrations/gsap'
 import DefaultLayout from './layouts/default.vue'
 import { router } from './router'
+import './styles/main.css'
 
 setupGsap()
 
