@@ -1,5 +1,6 @@
 export { default as Board } from './components/Board.vue'
 export { emptyMotion, motionFor } from './lib/motion'
 export type { Motion } from './lib/motion'
+export { NODE_GROUP } from './lib/nodes'
 export { PILE_ID } from './lib/piles'
 export type { PileId } from './lib/piles'

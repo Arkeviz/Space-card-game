@@ -6,7 +6,8 @@
 import type { CardInstance } from '@space/engine'
 import type { LegalIndex, TableState } from '../../table'
 import { PROMPT_KIND } from '@space/engine'
-import { computed, ref } from 'vue'
+import { computed, ref, useTemplateRef } from 'vue'
+import { useRovingFocus } from '@/common/composables/useRovingFocus'
 import AppDialog from '@/common/ui/AppDialog.vue'
 import AppIcon from '@/common/ui/AppIcon.vue'
 import GameButton from '@/common/ui/GameButton.vue'
@@ -58,6 +59,8 @@ const TEXTS = {
 } as const
 
 const selected = ref<string | null>(null)
+const grid = useTemplateRef<HTMLElement>('grid')
+const roving = useRovingFocus(grid)
 
 const options = computed<Option[]>(() => {
   const { table, legal } = props
@@ -84,6 +87,14 @@ function confirm(): void {
   if (selected.value)
     emit('choose', selected.value)
 }
+
+/** Enter на карте: выбрать её, а если она уже выбрана - подтвердить (Пробел только переключает выбор). */
+function onEnter(id: string): void {
+  if (selected.value === id)
+    confirm()
+  else
+    selected.value = id
+}
 </script>
 
 <template>
@@ -100,15 +111,18 @@ function confirm(): void {
       <p class="section__title">
         {{ texts.section }} · {{ options.length }}
       </p>
-      <div class="section__cards">
+      <div ref="grid" class="section__cards" @keydown="roving.onKeydown" @focusin="roving.onFocusin">
         <button
-          v-for="option in options"
+          v-for="(option, index) in options"
           :key="option.id"
           type="button"
           class="pick"
+          :data-roving="option.id"
+          :tabindex="roving.tabindexFor(option.id, index)"
           :aria-label="`${texts.action} «${cardName(option.cardId)}»`"
           :aria-pressed="selected === option.id"
           @click="selected = selected === option.id ? null : option.id"
+          @keydown.enter.prevent="onEnter(option.id)"
         >
           <CardThumb :card-id="option.cardId" :scale="0.7" zoom :state="selected === option.id ? CARD_STATE.SELECTED : CARD_STATE.SELECTABLE" />
         </button>

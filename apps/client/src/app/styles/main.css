@@ -40,7 +40,7 @@ body,
 }
 
 body {
-  overflow: hidden;
+  overflow: clip;
   background: var(--c-bg);
   color: var(--c-text);
   font-family: var(--font-text);

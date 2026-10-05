@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { CardForm, CardVisualState } from '../lib/card-visual'
-import { computed, inject, ref, useTemplateRef } from 'vue'
+import { computed, inject, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue'
 import { DIALOG_LAYER_KEY } from '@/common/ui/dialog-layer'
 import { CARD_FORM, CARD_SIZE, CARD_STATE } from '../lib/card-visual'
 import CardView from './CardView.vue'
@@ -66,6 +66,18 @@ function show(): void {
 function hide(): void {
   zoomAt.value = null
 }
+
+// Миниатюра обычно лежит внутри кнопки или фокусируемой ячейки: увеличение показывается и когда фокус пришёл на неё с клавиатуры.
+let trigger: HTMLElement | null = null
+onMounted(() => {
+  trigger = box.value?.closest<HTMLElement>('button, [tabindex]') ?? null
+  trigger?.addEventListener('focus', show)
+  trigger?.addEventListener('blur', hide)
+})
+onBeforeUnmount(() => {
+  trigger?.removeEventListener('focus', show)
+  trigger?.removeEventListener('blur', hide)
+})
 </script>
 
 <template>

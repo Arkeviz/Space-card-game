@@ -1,6 +1,6 @@
 import type { Command, CommandError, GameEvent, PlayerId, PlayerView } from '@space/engine'
 import type { MatchError, ServerMessage, UpdateMessage } from '@space/protocol'
-import { SERVER_MESSAGE } from '@space/protocol'
+import { MATCH_ERROR, SERVER_MESSAGE } from '@space/protocol'
 
 export type CommandResult
   = | { ok: true }
@@ -23,6 +23,9 @@ export class ConnectionState {
   matchId: string | null = null
   code: string | null = null
   opponentConnected = false
+  /** Сколько мс до автоматической сдачи отключившегося соперника на момент opponentStatusAt; null, пока он на связи. */
+  opponentReconnectTimeLeftMs: number | null = null
+  opponentStatusAt = 0
   view: PlayerView | null = null
   legalActions: Command[] = []
   lastEvents: GameEvent[] = []
@@ -45,15 +48,26 @@ export class ConnectionState {
         this.lastError = null
         return { matchId: message.matchId, token: message.token }
 
-      case SERVER_MESSAGE.UPDATE:
+      case SERVER_MESSAGE.UPDATE: {
+        const hadView = this.view !== null
         this.view = message.view
         this.legalActions = message.legalActions
         this.lastEvents = message.events
         this.turnTimeLeftMs = message.turnTimeLeftMs
         this.updatedAt = Date.now()
-        this.opponentConnected = true
+        // Update приходит и пока соперник отключён (автоход по таймауту): статус меняет только OPPONENT_STATUS.
+        // Исключение - самый первый update матча: раз партия идёт, соперник на месте.
+        if (!hadView)
+          this.opponentConnected = true
         for (const listener of this.updateListeners)
           listener(message)
+        return null
+      }
+
+      case SERVER_MESSAGE.OPPONENT_STATUS:
+        this.opponentConnected = message.connected
+        this.opponentReconnectTimeLeftMs = message.reconnectTimeLeftMs
+        this.opponentStatusAt = Date.now()
         return null
 
       case SERVER_MESSAGE.ACK:
@@ -65,6 +79,9 @@ export class ConnectionState {
         return null
 
       case SERVER_MESSAGE.ERROR:
+        // Комната удалена, пока мы ждали соперника: матча больше нет, возвращаемся в лобби с пояснением.
+        if (message.reason === MATCH_ERROR.EXPIRED)
+          this.leave()
         this.lastError = message.reason
         return null
     }
@@ -82,6 +99,7 @@ export class ConnectionState {
     this.matchId = null
     this.code = null
     this.opponentConnected = false
+    this.opponentReconnectTimeLeftMs = null
     this.view = null
     this.legalActions = []
     this.lastEvents = []

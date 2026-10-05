@@ -7,9 +7,11 @@ import type { Pose } from '../lib/layout'
  * (колода, рука соперника), исчезающие - улетают в заданную точку или растворяются.
  */
 import type { Motion, SpawnHint } from '../lib/motion'
-import type { CardNode } from '../lib/nodes'
+import type { CardNode, DragState, NavKey } from '../lib/nodes'
 import gsap from 'gsap'
-import { nextTick, onMounted, ref, watch } from 'vue'
+import { Draggable } from 'gsap/Draggable'
+import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { insideAny } from '../lib/layout'
 import { emptyMotion } from '../lib/motion'
 import { NODE_ZONE } from '../lib/nodes'
 import CardNodeView from './CardNodeView.vue'
@@ -24,6 +26,12 @@ const emit = defineEmits<{
   click: [node: CardNode]
   highlight: [key: string | null]
   scrap: [node: CardNode]
+  focused: [node: CardNode]
+  navigate: [node: CardNode, key: NavKey]
+  /** Карту начали, тянут или бросили (null). */
+  drag: [state: DragState | null]
+  /** Карту отпустили над её зоной: нужно выполнить команду. */
+  drop: [node: CardNode]
 }>()
 
 const root = ref<HTMLElement | null>(null)
@@ -278,6 +286,126 @@ function move(el: HTMLElement, node: CardNode, previous: Applied): void {
   track(tween)
 }
 
+/* ---------- Перетаскивание ---------- */
+
+/** Последняя известная модель каждой карты: колбэки Draggable живут дольше одного рендера. */
+const latest = new Map<string, CardNode>()
+const draggables = new Map<string, Draggable>()
+/** Карты, которые отпустили над зоной: ждём ответа сервера, чтобы вернуть на место, если команду не приняли. */
+const dropped = new Set<string>()
+let draggingKey: string | null = null
+let lastDragEnd = 0
+/** Сразу после перетаскивания браузер присылает click: он не должен играть карту второй раз. */
+const CLICK_AFTER_DRAG_MS = 250
+const MIN_DRAG_PX = 8
+const DRAG_Z = 400
+
+/** Координаты указателя в логических пикселях сцены (сцена масштабируется целиком, StageScaler). */
+function stagePoint(event: PointerEvent | MouseEvent): { x: number, y: number } | null {
+  const layerEl = root.value
+  if (!layerEl)
+    return null
+  const rect = layerEl.getBoundingClientRect()
+  const k = rect.width / layerEl.offsetWidth
+  return { x: (event.clientX - rect.left) / k, y: (event.clientY - rect.top) / k }
+}
+
+function isInside(node: CardNode, event: PointerEvent | MouseEvent): boolean {
+  const point = stagePoint(event)
+  return !!point && !!node.drag && insideAny(node.drag.rects, point.x, point.y)
+}
+
+function returnToPose(key: string): void {
+  const el = find(key)
+  const node = latest.get(key)
+  if (!el || !node)
+    return
+  track(gsap.to(el, { ...poseVars(node.pose), zIndex: node.pose.z, duration: MOVE_DURATION / 2 / props.speed, ease: 'power3.out', overwrite: 'auto' }))
+}
+
+function startDrag(key: string, el: HTMLElement): Draggable | undefined {
+  const trigger = el.querySelector<HTMLElement>('.node__hit')
+  if (!trigger)
+    return undefined
+  const [instance] = Draggable.create(el, {
+    type: 'x,y',
+    trigger,
+    minimumMovement: MIN_DRAG_PX,
+    zIndexBoost: false,
+    onPress() {
+      // Карта в полёте или в руке: перехватываем, чтобы твин не вырывал её из-под пальца.
+      gsap.killTweensOf(el, 'x,y')
+    },
+    onDragStart() {
+      const node = latest.get(key)
+      if (!node?.drag)
+        return
+      draggingKey = key
+      gsap.set(el, { zIndex: DRAG_Z })
+      // Карта руки выпрямляется и чуть вырастает: так видно, что её держат.
+      gsap.to(el, { rotation: 0, scale: node.pose.scale * 1.06, duration: HOVER_DURATION, overwrite: 'auto' })
+      emit('drag', { key, zone: node.drag.zone, rects: node.drag.rects, inside: false })
+    },
+    onDrag(event: PointerEvent) {
+      const node = latest.get(key)
+      if (node?.drag)
+        emit('drag', { key, zone: node.drag.zone, rects: node.drag.rects, inside: isInside(node, event) })
+    },
+    onDragEnd(event: PointerEvent) {
+      const node = latest.get(key)
+      draggingKey = null
+      lastDragEnd = performance.now()
+      emit('drag', null)
+      if (node?.drag && isInside(node, event)) {
+        dropped.add(key)
+        emit('drop', node)
+      }
+      else {
+        returnToPose(key)
+      }
+    },
+  })
+  return instance
+}
+
+/** Включает и выключает перетаскивание у карт в соответствии с их моделью (node.drag). */
+function syncDraggables(nodes: CardNode[]): void {
+  const keys = new Set<string>()
+  for (const node of nodes) {
+    keys.add(node.key)
+    latest.set(node.key, node)
+    const existing = draggables.get(node.key)
+    if (node.drag && !existing) {
+      const el = find(node.key)
+      const instance = el ? startDrag(node.key, el) : undefined
+      if (instance)
+        draggables.set(node.key, instance)
+    }
+    else if (!node.drag && existing) {
+      existing.kill()
+      draggables.delete(node.key)
+    }
+  }
+  for (const [key, instance] of draggables) {
+    if (!keys.has(key)) {
+      instance.kill()
+      draggables.delete(key)
+    }
+  }
+  for (const key of latest.keys()) {
+    if (!keys.has(key)) {
+      latest.delete(key)
+      dropped.delete(key)
+    }
+  }
+}
+
+function onNodeClick(node: CardNode): void {
+  if (performance.now() - lastDragEnd < CLICK_AFTER_DRAG_MS)
+    return
+  emit('click', node)
+}
+
 function applyNodes(nodes: CardNode[]): void {
   const keys = new Set<string>()
   for (const node of nodes) {
@@ -286,18 +414,36 @@ function applyNodes(nodes: CardNode[]): void {
     if (!el)
       continue
     const previous = applied.get(node.key)
-    if (!previous)
+    if (!previous) {
       spawn(el, node)
-    else if (!samePose(previous.pose, node.pose))
+    }
+    else if (node.key === draggingKey) {
+      // Карту держат в руке: позиции не трогаем, после броска она вернётся к последней известной.
+    }
+    else if (!samePose(previous.pose, node.pose)) {
+      dropped.delete(node.key)
       move(el, node, previous)
+    }
+    else if (dropped.has(node.key) && node.drag) {
+      // Карту отпустили над зоной, но команду не приняли (ввод снова открыт, поза та же): возвращаем.
+      dropped.delete(node.key)
+      returnToPose(node.key)
+    }
     applied.set(node.key, { pose: node.pose, zone: node.zone })
   }
   for (const key of applied.keys()) {
     if (!keys.has(key))
       applied.delete(key)
   }
+  syncDraggables(nodes)
   snapNext = false
 }
+
+onBeforeUnmount(() => {
+  for (const instance of draggables.values())
+    instance.kill()
+  draggables.clear()
+})
 
 watch(() => props.nodes, applyNodes, { flush: 'post' })
 
@@ -333,6 +479,12 @@ defineExpose({
   snapNext(): void {
     snapNext = true
   },
+  /** Переводит фокус на кнопку карты (навигация стрелками, возврат фокуса после хода). */
+  focusNode(key: string): boolean {
+    const target = find(key)?.querySelector<HTMLElement>('.node__hit')
+    target?.focus()
+    return target !== null && target !== undefined
+  },
   /** Разрешается, когда завершились все анимации, начатые после последнего изменения списка карт. */
   async settled(): Promise<void> {
     await nextTick()
@@ -349,9 +501,11 @@ defineExpose({
         v-for="node in nodes"
         :key="node.key"
         :node="node"
-        @click="emit('click', $event)"
+        @click="onNodeClick"
         @highlight="emit('highlight', $event)"
         @scrap="emit('scrap', $event)"
+        @focused="emit('focused', $event)"
+        @navigate="(node, key) => emit('navigate', node, key)"
       />
     </TransitionGroup>
   </div>

@@ -109,7 +109,7 @@ function submit(): void {
   position: relative;
   width: 1920px;
   height: 1080px;
-  overflow: hidden;
+  overflow: clip;
   color: var(--c-text);
   font-family: var(--font-text);
 }

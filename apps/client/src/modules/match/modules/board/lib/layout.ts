@@ -313,6 +313,35 @@ export function opponentHandOrigin(): Pose {
   return opponentHandPoses(1)[0]!
 }
 
+/* ---------- Перетаскивание ---------- */
+
+/** Куда можно отпустить перетаскиваемую карту. */
+export const DROP_ZONE = {
+  /** Весь стол выше руки: сюда бросают карту руки, чтобы сыграть её. */
+  TABLE: 'table',
+  /** Нижняя полоса сцены (рука, колода, сброс, панель авторитета): сюда бросают карту рынка, чтобы купить её. */
+  OWN_SIDE: 'own-side',
+} as const
+export type DropZone = (typeof DROP_ZONE)[keyof typeof DROP_ZONE]
+
+/** Отступ от руки: карту нужно потянуть заметно вверх, а не просто чуть сдвинуть. */
+const TABLE_DROP_MARGIN = 24
+
+/** Прямоугольники зоны броска (сейчас у каждой зоны один). */
+export function dropRects(zone: DropZone): Rect[] {
+  if (zone === DROP_ZONE.TABLE)
+    return [{ x: 0, y: 0, w: 1920, h: RECT.SELF_HAND.y - TABLE_DROP_MARGIN }]
+  return [{ x: 0, y: RECT.SELF_HAND.y, w: 1920, h: 1080 - RECT.SELF_HAND.y }]
+}
+
+export function insideRect(rect: Rect, x: number, y: number): boolean {
+  return x >= rect.x && x <= rect.x + rect.w && y >= rect.y && y <= rect.y + rect.h
+}
+
+export function insideAny(rects: readonly Rect[], x: number, y: number): boolean {
+  return rects.some(rect => insideRect(rect, x, y))
+}
+
 /* ---------- Крупный просмотр карты ---------- */
 
 export const PREVIEW_SCALE = 1.25

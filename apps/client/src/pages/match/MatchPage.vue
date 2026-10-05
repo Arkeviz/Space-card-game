@@ -13,6 +13,11 @@ const connection = useGameConnection()
 const router = useRouter()
 
 const ready = computed(() => connection.state.view !== null)
+// Момент автоматической сдачи отключившегося соперника: серверное «осталось N мс» привязываем к времени получения.
+const opponentReturnDeadline = computed(() => {
+  const { opponentReconnectTimeLeftMs, opponentStatusAt } = connection.state
+  return opponentReconnectTimeLeftMs === null ? null : opponentStatusAt + opponentReconnectTimeLeftMs
+})
 
 const transport: MatchTransport = {
   snapshot() {
@@ -45,7 +50,14 @@ function leave(): void {
 </script>
 
 <template>
-  <MatchScreen v-if="ready" :transport="transport" :online="connection.online.value" @leave="leave" />
+  <MatchScreen
+    v-if="ready"
+    :transport="transport"
+    :online="connection.online.value"
+    :opponent-online="connection.state.opponentConnected"
+    :opponent-return-deadline="opponentReturnDeadline"
+    @leave="leave"
+  />
   <main v-else class="loading" role="status">
     Загрузка матча…
   </main>

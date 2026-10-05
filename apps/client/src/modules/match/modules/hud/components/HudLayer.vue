@@ -29,6 +29,8 @@ const props = defineProps<{
   fx: FxItem[]
   banner: TurnBanner | null
   online: boolean
+  opponentOnline: boolean
+  opponentReturnDeadline: number | null
   playAllCount: number
 }>()
 
@@ -59,6 +61,8 @@ const hint = computed(() => hintFor(props.table, props.legal))
         :active="!mine"
         :protected-by-outpost="opponentHasOutpost"
         :attack-amount="attackAmount"
+        :online="opponentOnline"
+        :return-deadline="opponentReturnDeadline"
         :fx="opponentFx"
         @attack="emit('attack', attackAmount)"
       />

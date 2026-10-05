@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import type { PileViewerItem } from '../lib/pile-items'
+import { useTemplateRef } from 'vue'
+import { useRovingFocus } from '@/common/composables/useRovingFocus'
 import AppDialog from '@/common/ui/AppDialog.vue'
 import { cardName, CardThumb } from '@/modules/cards'
 
@@ -12,6 +14,9 @@ defineProps<{
 }>()
 
 const emit = defineEmits<{ close: [] }>()
+
+const list = useTemplateRef<HTMLElement>('list')
+const roving = useRovingFocus(list)
 </script>
 
 <template>
@@ -22,8 +27,15 @@ const emit = defineEmits<{ close: [] }>()
     <p v-if="items.length === 0" class="empty">
       Здесь пока нет карт.
     </p>
-    <ul v-else class="cards">
-      <li v-for="item in items" :key="item.key" class="item">
+    <ul v-else ref="list" class="cards" @keydown="roving.onKeydown" @focusin="roving.onFocusin">
+      <li
+        v-for="(item, index) in items"
+        :key="item.key"
+        class="item"
+        :data-roving="item.key"
+        :tabindex="roving.tabindexFor(item.key, index)"
+        :aria-label="`${cardName(item.cardId)}${item.count > 1 ? `, ${item.count} шт.` : ''}`"
+      >
         <CardThumb :card-id="item.cardId" :scale="0.95" zoom />
         <span v-if="item.count > 1" class="item__count" aria-hidden="true">×{{ item.count }}</span>
         <span class="visually-hidden">{{ cardName(item.cardId) }}{{ item.count > 1 ? `, ${item.count} шт.` : '' }}</span>

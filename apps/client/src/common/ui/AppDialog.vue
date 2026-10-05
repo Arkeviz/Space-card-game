@@ -51,10 +51,43 @@ onKeyStroke('Escape', () => {
     emit('close')
 })
 
+/** Элементы окна, до которых доходит Tab (roving-элементы с tabindex -1 в обход не входят). */
+const FOCUSABLE = 'button:not(:disabled), [href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex="0"]'
+
+/**
+ * Окно модальное: Tab и Shift+Tab ходят по кругу внутри него, а не уходят на стол под затемнением. Если фокус
+ * по какой-то причине оказался снаружи (кликнули мимо кнопки), следующий Tab возвращает его в окно.
+ */
+onKeyStroke('Tab', (event) => {
+  const root = panel.value
+  if (!root)
+    return
+  const items = [...root.querySelectorAll<HTMLElement>(FOCUSABLE)].filter(element => element.offsetParent !== null)
+  if (items.length === 0) {
+    event.preventDefault()
+    return
+  }
+  const first = items[0]!
+  const last = items.at(-1)!
+  const active = document.activeElement
+  if (!root.contains(active)) {
+    event.preventDefault()
+    ;(event.shiftKey ? last : first).focus()
+  }
+  else if (event.shiftKey && active === first) {
+    event.preventDefault()
+    last.focus()
+  }
+  else if (!event.shiftKey && active === last) {
+    event.preventDefault()
+    first.focus()
+  }
+})
+
 // Фокус - в окно (на первую кнопку тела, а не на крестик), после закрытия - обратно туда, откуда открыли.
 onMounted(() => {
   previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
-  const target = panel.value?.querySelector<HTMLElement>('.dialog__body button:not(:disabled), .dialog__footer button:not(:disabled)')
+  const target = panel.value?.querySelector<HTMLElement>('.dialog__body :is(button:not(:disabled), [tabindex="0"]), .dialog__footer button:not(:disabled)')
     ?? panel.value?.querySelector<HTMLElement>('button')
   target?.focus()
 })

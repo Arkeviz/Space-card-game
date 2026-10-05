@@ -3,7 +3,8 @@ import type { CardInstance, Effect } from '@space/engine'
 import type { TableState } from '../../table'
 import { CARD_KIND, getCard } from '@space/engine'
 import { onKeyStroke } from '@vueuse/core'
-import { computed } from 'vue'
+import { computed, useTemplateRef } from 'vue'
+import { useRovingFocus } from '@/common/composables/useRovingFocus'
 import AppDialog from '@/common/ui/AppDialog.vue'
 import AppIcon from '@/common/ui/AppIcon.vue'
 import { CARD_FORM, cardName, CardThumb, describeEffectShort, effectTokens, TOKEN_KIND } from '@/modules/cards'
@@ -26,6 +27,9 @@ const items = computed(() => props.options.map((option, index) => ({
   text: option.map(describeEffectShort).join(', ').replace(/^\+\d+\s+/, ''),
   preview: previewOption(props.table, option),
 })))
+
+const grid = useTemplateRef<HTMLElement>('grid')
+const roving = useRovingFocus(grid)
 
 const title = computed(() => (props.source ? cardName(props.source.cardId) : 'Выбор эффекта'))
 const deployed = computed(() => (props.source && getCard(props.source.cardId).kind !== CARD_KIND.SHIP ? CARD_FORM.DEPLOYED : CARD_FORM.CARD))
@@ -51,12 +55,14 @@ onKeyStroke(['1', '2', '3', '4', '5', '6', '7', '8', '9'], (event) => {
       </p>
     </div>
 
-    <div class="options">
+    <div ref="grid" class="options" @keydown="roving.onKeydown" @focusin="roving.onFocusin">
       <button
         v-for="item in items"
         :key="item.index"
         type="button"
         class="option"
+        :data-roving="item.index"
+        :tabindex="roving.tabindexFor(String(item.index), item.index)"
         :aria-label="`Вариант ${item.index + 1}: ${item.text}`"
         @click="emit('choose', item.index)"
       >

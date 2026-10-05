@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { CardInstance } from '@space/engine'
+import { useEventListener } from '@vueuse/core'
 import { computed } from 'vue'
 import GameButton from '@/common/ui/GameButton.vue'
 import { cardsWord } from '@/common/utilities/plural'
@@ -36,6 +37,21 @@ const title = computed(() => (props.optional ? `Сбросьте до ${props.li
 
 // Обязательный сброс требует ровно limit карт, необязательный - хотя бы одну.
 const ready = computed(() => (props.optional ? props.selectedCount > 0 : props.selectedCount === props.limit))
+/**
+ * Enter на уже выбранной карте руки подтверждает сброс (на невыбранной - выбирает её, как обычный клик).
+ * Слушатель на этапе перехвата: иначе кнопка карты сначала получила бы click и сняла выбор.
+ */
+useEventListener(window, 'keydown', (event: KeyboardEvent) => {
+  const target = event.target
+  if (event.key !== 'Enter' || !ready.value || !(target instanceof HTMLElement))
+    return
+  if (target.classList.contains('node__hit') && target.getAttribute('aria-pressed') === 'true') {
+    event.preventDefault()
+    event.stopPropagation()
+    emit('confirm')
+  }
+}, { capture: true })
+
 const buttonText = computed(() => {
   if (props.limit <= 1)
     return ready.value ? 'Сбросить' : 'Выберите карту'

@@ -1,12 +1,15 @@
 import type { CardInstance, Command, PlayedCard, ValueOf } from '@space/engine'
+import type { Rect } from '../../../lib/rects'
 import type { LegalIndex, TableState } from '../../table'
-import type { Pose } from './layout'
+import type { DropZone, Pose } from './layout'
 import type { AbilityStatus, CardForm, CardVisualState } from '@/modules/cards'
 import { ABILITY_KIND, CARD_KIND, COMMAND_TYPE, effectiveCard, getCard, PROMPT_KIND } from '@space/engine'
 import { ABILITY_STATUS, CARD_FORM, CARD_STATE, cardName } from '@/modules/cards'
 import { SIDE } from '../../table'
 import {
   basePoses,
+  DROP_ZONE,
+  dropRects,
   explorersPose,
   handPoses,
   layoutOf,
@@ -35,6 +38,38 @@ export const NODE_ZONE = {
   SCRAP: 'scrap',
 } as const
 export type NodeZone = ValueOf<typeof NODE_ZONE>
+
+/** Группы карт для клавиатуры: внутри группы ходят стрелками, между группами - вверх и вниз (сверху вниз). */
+export const NODE_GROUP = {
+  OPPONENT_FIELD: 'opponent-field',
+  TRADE: 'trade',
+  SELF_FIELD: 'self-field',
+  HAND: 'hand',
+} as const
+export type NodeGroup = ValueOf<typeof NODE_GROUP>
+
+/** Порядок групп сверху вниз - по нему работают стрелки вверх и вниз. */
+export const GROUP_ORDER: readonly NodeGroup[] = [NODE_GROUP.OPPONENT_FIELD, NODE_GROUP.TRADE, NODE_GROUP.SELF_FIELD, NODE_GROUP.HAND]
+
+/** Карту можно перетащить в зону: тогда выполняется команда (та же, что и по клику). */
+export interface NodeDrag {
+  command: Command
+  zone: DropZone
+  /** Где можно отпустить карту (логические пиксели сцены). */
+  rects: Rect[]
+}
+
+function dragTo(command: Command, zone: DropZone): NodeDrag {
+  return { command, zone, rects: dropRects(zone) }
+}
+
+/** Состояние перетаскивания для подсветки зоны: inside - карта сейчас над зоной. */
+export interface DragState {
+  key: string
+  zone: DropZone
+  rects: Rect[]
+  inside: boolean
+}
 
 export const NODE_CLICK = {
   COMMAND: 'command',
@@ -66,6 +101,12 @@ export interface CardNode {
   click: NodeClick | null
   /** Дополнительное действие «утилизировать» (кнопка у карты на столе). */
   scrapCommand: Command | null
+  /** Группа для навигации с клавиатуры; null - в навигации не участвует. */
+  group: NodeGroup | null
+  /** Один пункт группы входит в обычный обход Tab (roving tabindex), остальные достижимы стрелками. */
+  tabbable: boolean
+  /** Перетаскивание; null - карту перетащить нельзя. */
+  drag: NodeDrag | null
   /** Поднимается при наведении. */
   liftable: boolean
   /** Нужна ли карта пользователю как кнопка (иначе - просто картинка поверх стола). */
@@ -96,6 +137,9 @@ function baseNode(key: string, cardId: string | null, pose: Pose, zone: NodeZone
     label: '',
     click: null,
     scrapCommand: null,
+    group: null,
+    tabbable: true,
+    drag: null,
     liftable: false,
     decorative: true,
   }
@@ -115,6 +159,7 @@ function handNodes(table: TableState, ctx: NodeContext): CardNode[] {
     const node = cardNode(card, poses[index]!, NODE_ZONE.HAND)
     node.liftable = true
     node.decorative = false
+    node.group = NODE_GROUP.HAND
     node.label = `«${cardName(card.cardId)}» в руке`
 
     if (discarding && ctx.interactive && ctx.legal.promptCards.has(card.id)) {
@@ -125,6 +170,7 @@ function handNodes(table: TableState, ctx: NodeContext): CardNode[] {
     }
     else if (ctx.interactive && ctx.legal.playable.has(card.id)) {
       node.click = { kind: NODE_CLICK.COMMAND, command: { type: COMMAND_TYPE.PLAY_CARD, cardId: card.id } }
+      node.drag = dragTo({ type: COMMAND_TYPE.PLAY_CARD, cardId: card.id }, DROP_ZONE.TABLE)
       node.label = `Сыграть «${cardName(card.cardId)}»`
       if (ctx.hoverKey === card.id)
         node.state = CARD_STATE.HOVER
@@ -147,6 +193,7 @@ function tradeRowNodes(table: TableState, ctx: NodeContext): CardNode[] {
       return
     const node = cardNode(card, tradeSlotPose(layoutOf(table).trade, slot), NODE_ZONE.TRADE_ROW)
     node.decorative = false
+    node.group = NODE_GROUP.TRADE
     const name = cardName(card.cardId)
     const affordable = ctx.legal.buyable.has(card.id)
     node.label = `«${name}» на рынке, цена ${getCard(card.cardId).cost}`
@@ -154,8 +201,10 @@ function tradeRowNodes(table: TableState, ctx: NodeContext): CardNode[] {
       node.state = affordable ? CARD_STATE.AFFORDABLE : CARD_STATE.UNAFFORDABLE
       node.label = affordable ? `Купить «${name}» за ${getCard(card.cardId).cost}` : `«${name}»: не хватает торговли`
     }
-    if (ctx.interactive && affordable)
+    if (ctx.interactive && affordable) {
       node.click = { kind: NODE_CLICK.COMMAND, command: { type: COMMAND_TYPE.BUY, cardId: card.id } }
+      node.drag = dragTo({ type: COMMAND_TYPE.BUY, cardId: card.id }, DROP_ZONE.OWN_SIDE)
+    }
     nodes.push(node)
   })
 
@@ -163,14 +212,17 @@ function tradeRowNodes(table: TableState, ctx: NodeContext): CardNode[] {
     const node = baseNode(NODE_KEY.EXPLORERS_PILE, 'explorer', explorersPose(layoutOf(table).trade), NODE_ZONE.EXPLORERS)
     node.instanceId = null
     node.decorative = false
+    node.group = NODE_GROUP.TRADE
     node.label = 'Исследователь'
     if (myTurn) {
       const affordable = ctx.legal.canBuyExplorer
       node.state = affordable ? CARD_STATE.AFFORDABLE : CARD_STATE.UNAFFORDABLE
       node.label = affordable ? 'Купить «Исследователя» за 2' : '«Исследователь»: не хватает торговли'
     }
-    if (ctx.interactive && ctx.legal.canBuyExplorer)
+    if (ctx.interactive && ctx.legal.canBuyExplorer) {
       node.click = { kind: NODE_CLICK.COMMAND, command: { type: COMMAND_TYPE.BUY_EXPLORER } }
+      node.drag = dragTo({ type: COMMAND_TYPE.BUY_EXPLORER }, DROP_ZONE.OWN_SIDE)
+    }
     nodes.push(node)
   }
   return nodes
@@ -222,6 +274,7 @@ function fieldNodes(table: TableState, ctx: NodeContext, side: typeof SIDE.SELF 
     node.form = deployed ? CARD_FORM.DEPLOYED : CARD_FORM.CARD
     node.copyOf = entry.copyOf
     node.decorative = false
+    node.group = mine ? NODE_GROUP.SELF_FIELD : NODE_GROUP.OPPONENT_FIELD
     node.label = `«${name}» на столе`
     Object.assign(node, abilityStatuses(entry, mine, ctx))
 
@@ -256,6 +309,58 @@ function fieldNodes(table: TableState, ctx: NodeContext, side: typeof SIDE.SELF 
     ...ships.map((entry, index) => build(entry, shipSlots[index]!, false)),
     ...bases.map((entry, index) => build(entry, baseSlots[index]!, true)),
   ]
+}
+
+/**
+ * Roving tabindex: в каждой группе в обход Tab входит одна карта (запомненная, а если её нет - крайняя левая),
+ * к остальным ведут стрелки. Без этого десятки карт на столе превращали бы Tab в долгое блуждание.
+ */
+export function applyRoving(nodes: CardNode[], remembered: Partial<Record<NodeGroup, string>>): CardNode[] {
+  for (const group of GROUP_ORDER) {
+    const members = focusables(nodes, group)
+    const active = members.find(node => node.key === remembered[group]) ?? members[0]
+    for (const node of members)
+      node.tabbable = node === active
+  }
+  return nodes
+}
+
+/** Карты группы, до которых можно добраться с клавиатуры (есть клик), слева направо. */
+export function focusables(nodes: readonly CardNode[], group: NodeGroup): CardNode[] {
+  return nodes
+    .filter(node => node.group === group && node.click !== null)
+    .sort((a, c) => a.pose.x - c.pose.x || a.pose.y - c.pose.y)
+}
+
+export type NavKey = 'ArrowLeft' | 'ArrowRight' | 'ArrowUp' | 'ArrowDown' | 'Home' | 'End'
+
+/**
+ * Куда уйдёт фокус от карты from по нажатию клавиши навигации: влево и вправо - соседняя карта группы,
+ * Home и End - крайние, вверх и вниз - ближайшая по горизонтали карта соседней непустой группы. null - идти некуда.
+ */
+export function navigateTarget(nodes: readonly CardNode[], from: CardNode, key: NavKey): CardNode | null {
+  if (from.group === null)
+    return null
+  const row = focusables(nodes, from.group)
+  const index = row.findIndex(node => node.key === from.key)
+  if (key === 'ArrowLeft')
+    return row[index - 1] ?? null
+  if (key === 'ArrowRight')
+    return row[index + 1] ?? null
+  if (key === 'Home')
+    return row[0] ?? null
+  if (key === 'End')
+    return row.at(-1) ?? null
+
+  const step = key === 'ArrowUp' ? -1 : 1
+  let at = GROUP_ORDER.indexOf(from.group) + step
+  while (at >= 0 && at < GROUP_ORDER.length) {
+    const candidates = focusables(nodes, GROUP_ORDER[at]!)
+    if (candidates.length > 0)
+      return candidates.reduce((best, node) => (Math.abs(node.pose.x - from.pose.x) < Math.abs(best.pose.x - from.pose.x) ? node : best))
+    at += step
+  }
+  return null
 }
 
 /** В сбросе рисуются две верхние карты: нижняя нужна, пока новая карта летит на стопку. */

@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import type { CardNode } from '../lib/nodes'
+import type { CardNode, NavKey } from '../lib/nodes'
 import { computed } from 'vue'
 import AppIcon from '@/common/ui/AppIcon.vue'
 import { ICON } from '@/common/ui/icons'
-import { ABILITY_STATUS, CARD_FORM, CARD_SIZE, cardName, CardView } from '@/modules/cards'
+import { ABILITY_STATUS, CARD_FORM, CARD_SIZE, CARD_STATE, cardName, CardView } from '@/modules/cards'
 
 /*
  * Одна карта на столе: невидимая кнопка сверху (клик, фокус, подпись для скринридера), под ней двусторонняя
@@ -15,8 +15,28 @@ const emit = defineEmits<{
   click: [node: CardNode]
   highlight: [key: string | null]
   scrap: [node: CardNode]
+  /** Фокус пришёл на карту (запоминается как точка входа группы для Tab). */
+  focused: [node: CardNode]
+  /** Клавиша навигации стрелками между картами. */
+  navigate: [node: CardNode, key: NavKey]
 }>()
 
+const NAV_KEYS = new Set<string>(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'])
+
+function onKeydown(event: KeyboardEvent): void {
+  if (!NAV_KEYS.has(event.key) || event.altKey || event.ctrlKey || event.metaKey)
+    return
+  event.preventDefault()
+  emit('navigate', props.node, event.key as NavKey)
+}
+
+function onFocus(): void {
+  emit('highlight', props.node.key)
+  emit('focused', props.node)
+}
+
+/** Карта руки в режиме выбора для сброса - переключатель: aria-pressed показывает, выбрана ли она. */
+const pressed = computed(() => (props.node.state === CARD_STATE.SELECTED ? true : props.node.state === CARD_STATE.SELECTABLE ? false : undefined))
 const size = computed(() => (props.node.form === CARD_FORM.DEPLOYED ? CARD_SIZE.DEPLOYED : CARD_SIZE.CARD))
 const style = computed(() => ({ width: `${size.value.w}px`, height: `${size.value.h}px` }))
 /** Эффект карты или базы можно активировать прямо сейчас: вокруг неё идёт пульсация. */
@@ -54,10 +74,13 @@ const scrapLabel = computed(() => (props.node.cardId ? `Утилизироват
       class="node__hit"
       :class="{ 'node__hit--liftable': node.liftable }"
       :aria-label="node.label"
+      :aria-pressed="pressed"
+      :tabindex="node.tabbable ? 0 : -1"
       @click="emit('click', node)"
+      @keydown="onKeydown"
       @pointerenter="emit('highlight', node.key)"
       @pointerleave="emit('highlight', null)"
-      @focus="emit('highlight', node.key)"
+      @focus="onFocus"
       @blur="emit('highlight', null)"
     />
     <div
@@ -73,6 +96,7 @@ const scrapLabel = computed(() => (props.node.cardId ? `Утилизироват
       v-if="node.scrapCommand"
       type="button"
       class="node__scrap"
+      :tabindex="node.tabbable ? 0 : -1"
       :aria-label="scrapLabel"
       :title="scrapLabel"
       @click="emit('scrap', node)"
@@ -198,6 +222,19 @@ const scrapLabel = computed(() => (props.node.cardId ? `Утилизироват
  */
 .node__hit--liftable {
   bottom: -90px;
+}
+
+/*
+ * Кнопка карты руки продлена вниз за край карты, поэтому обычная рамка фокуса вышла бы высоким прямоугольником.
+ * Вместо неё рамка рисуется вокруг самой карты.
+ */
+.node__hit:focus-visible {
+  outline: none;
+}
+
+.node:has(.node__hit:focus-visible) .node__flip {
+  outline: 2px solid var(--c-me);
+  outline-offset: 4px;
 }
 
 .node__hit--inert {

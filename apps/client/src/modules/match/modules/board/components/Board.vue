@@ -7,15 +7,16 @@ import type { Command } from '@space/engine'
 import type { LegalIndex, TableState } from '../../table'
 import type { FieldFrame } from '../lib/layout'
 import type { Motion } from '../lib/motion'
-import type { CardNode } from '../lib/nodes'
+import type { CardNode, DragState, NavKey, NodeGroup } from '../lib/nodes'
 import type { PileId } from '../lib/piles'
-import { CARD_KIND, getCard } from '@space/engine'
-import { computed, ref, useTemplateRef } from 'vue'
+import { CARD_KIND, COMMAND_TYPE, getCard } from '@space/engine'
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
 import AppIcon from '@/common/ui/AppIcon.vue'
 import { ICON } from '@/common/ui/icons'
 import { CARD_FORM, CARD_SIZE, cardName, CardView } from '@/modules/cards'
 import { STAGE } from '../../../lib/rects'
 import {
+  DROP_ZONE,
   fieldGeometry,
   layoutOf,
   opponentDeckPose,
@@ -27,7 +28,7 @@ import {
   TRADE_SLOT_W,
   tradeSlotX,
 } from '../lib/layout'
-import { buildNodes, NODE_CLICK, NODE_ZONE, tradeCaption } from '../lib/nodes'
+import { applyRoving, buildNodes, focusables, navigateTarget, NODE_CLICK, NODE_ZONE, tradeCaption } from '../lib/nodes'
 import { PILE_ID } from '../lib/piles'
 import CardLayer from './CardLayer.vue'
 import PileStack from './PileStack.vue'
@@ -51,12 +52,15 @@ const emit = defineEmits<{
 const layer = useTemplateRef<InstanceType<typeof CardLayer>>('layer')
 const hoverKey = ref<string | null>(null)
 
-const nodes = computed(() => buildNodes(props.table, {
+/** Какая карта группы входит в обход Tab: последняя, на которую приходил фокус. */
+const rememberedFocus = ref<Partial<Record<NodeGroup, string>>>({})
+
+const nodes = computed(() => applyRoving(buildNodes(props.table, {
   legal: props.legal,
   interactive: props.interactive,
   hoverKey: hoverKey.value,
   selectedCardIds: props.selectedCardIds,
-}))
+}), rememberedFocus.value))
 
 const layout = computed(() => layoutOf(props.table))
 const trade = computed(() => layout.value.trade)
@@ -86,13 +90,63 @@ const captions = computed(() => props.table.tradeRow.map((card) => {
   return tradeCaption(getCard(card.cardId).cost, props.table.pools.trade, myTurn.value)
 }))
 
+/* ---------- Перетаскивание ---------- */
+
+const dragState = ref<DragState | null>(null)
+const dropRects = computed(() => dragState.value?.rects ?? [])
+const dropLabel = computed(() => {
+  const node = nodes.value.find(item => item.key === dragState.value?.key)
+  return node?.drag?.command.type === COMMAND_TYPE.PLAY_CARD ? 'ОТПУСТИТЕ, ЧТОБЫ СЫГРАТЬ' : 'ОТПУСТИТЕ, ЧТОБЫ КУПИТЬ'
+})
+
+function onDrop(node: CardNode): void {
+  if (node.drag)
+    emit('command', node.drag.command)
+}
+
+/* ---------- Клавиатура ---------- */
+
+/** Куда вернуть фокус, если сфокусированная карта пропала (её сыграли или купили): на ту же позицию группы. */
+const focused = ref<{ key: string, group: NodeGroup | null, index: number } | null>(null)
+
+function onFocused(node: CardNode): void {
+  if (node.group)
+    rememberedFocus.value = { ...rememberedFocus.value, [node.group]: node.key }
+  focused.value = { key: node.key, group: node.group, index: node.group ? focusables(nodes.value, node.group).findIndex(item => item.key === node.key) : -1 }
+}
+
+function onNavigate(node: CardNode, key: NavKey): void {
+  const target = navigateTarget(nodes.value, node, key)
+  if (target)
+    layer.value?.focusNode(target.key)
+}
+
+watch(nodes, async () => {
+  const last = focused.value
+  if (!last?.group)
+    return
+  await nextTick()
+  const active = document.activeElement
+  // Фокус остался на странице (например, на кнопке «Конец хода») или внутри окна - его не трогаем.
+  if (active && active !== document.body)
+    return
+  if (document.querySelector('[role="dialog"]'))
+    return
+  const row = focusables(nodes.value, last.group)
+  if (row.some(item => item.key === last.key))
+    return
+  const next = row[Math.min(Math.max(last.index, 0), row.length - 1)]
+  if (next)
+    layer.value?.focusNode(next.key)
+})
+
 /**
  * Крупный просмотр карты, на которую наведён курсор: на поле и в ряду карты мелкие, текст способностей не
  * прочитать. Карты руки и так крупные, стопки и утиль - просто картинки без наведения.
  */
 const preview = computed(() => {
   const node = nodes.value.find(item => item.key === hoverKey.value)
-  if (!node?.cardId || node.decorative || node.zone === NODE_ZONE.HAND)
+  if (dragState.value || !node?.cardId || node.decorative || node.zone === NODE_ZONE.HAND)
     return null
   const natural = node.form === CARD_FORM.DEPLOYED ? CARD_SIZE.DEPLOYED : CARD_SIZE.CARD
   return { node, at: previewPlacement(node.pose, natural.h, STAGE) }
@@ -112,7 +166,16 @@ function onScrap(node: CardNode): void {
     emit('command', node.scrapCommand)
 }
 
+/** Переводит фокус в группу карт: на запомненную в ней или самую левую (например, в руку, когда открылся запрос на сброс). */
+function focusGroup(group: NodeGroup): void {
+  const row = focusables(nodes.value, group)
+  const target = row.find(node => node.key === rememberedFocus.value[group]) ?? row[0]
+  if (target)
+    layer.value?.focusNode(target.key)
+}
+
 defineExpose({
+  focusGroup,
   setMotion(motion: Motion): void {
     layer.value?.setMotion(motion)
   },
@@ -223,6 +286,20 @@ defineExpose({
       @click="emit('viewPile', PILE_ID.OPPONENT_DISCARD)"
     />
 
+    <!-- Зона, куда можно бросить перетаскиваемую карту; лежит под слоем карт, чтобы не закрывать саму карту. -->
+    <div
+      v-for="(rect, index) in dropRects"
+      :key="index"
+      class="board__drop"
+      :class="{ 'board__drop--inside': dragState?.inside }"
+      :style="{ left: `${rect.x}px`, top: `${rect.y}px`, width: `${rect.w}px`, height: `${rect.h}px` }"
+      aria-hidden="true"
+    >
+      <p v-if="index === 0" class="board__drop-label" :class="{ 'board__drop-label--edge': dragState?.zone === DROP_ZONE.OWN_SIDE }">
+        {{ dropLabel }}
+      </p>
+    </div>
+
     <CardLayer
       ref="layer"
       :nodes="nodes"
@@ -230,6 +307,10 @@ defineExpose({
       @click="onClick"
       @highlight="hoverKey = $event"
       @scrap="onScrap"
+      @focused="onFocused"
+      @navigate="onNavigate"
+      @drag="dragState = $event"
+      @drop="onDrop"
     />
 
     <div
@@ -367,6 +448,33 @@ defineExpose({
   background: transparent;
   cursor: pointer;
   pointer-events: auto;
+}
+
+.board__drop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  /* Подпись под рукой соперника: ниже карты на столе её не загораживают. */
+  padding-top: 100px;
+  background: rgba(79, 216, 255, 0.04);
+  box-shadow: inset 0 0 0 2px rgba(79, 216, 255, 0.3);
+  transition: background 0.15s, box-shadow 0.15s;
+}
+
+.board__drop--inside {
+  background: rgba(79, 216, 255, 0.14);
+  box-shadow: inset 0 0 0 2px var(--c-me), inset 0 0 60px rgba(79, 216, 255, 0.25);
+}
+
+/* Нижняя полоса зоны покупки: подпись прижата к её верхнему краю (padding зоны отменяется отрицательным отступом). */
+.board__drop-label--edge {
+  margin-top: -94px;
+}
+
+.board__drop-label {
+  color: var(--c-me);
+  font: 600 14px/1 var(--font-mono);
+  letter-spacing: 0.18em;
 }
 
 .board__preview {

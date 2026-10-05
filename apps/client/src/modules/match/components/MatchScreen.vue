@@ -7,12 +7,12 @@ import type { Command } from '@space/engine'
 import type { PileId } from '../modules/board'
 import type { Unspent } from '../modules/hud'
 import type { MatchTransport } from '../store/match-store'
-import { COMMAND_TYPE } from '@space/engine'
-import { useMediaQuery } from '@vueuse/core'
+import { COMMAND_TYPE, PROMPT_KIND } from '@space/engine'
+import { useEventListener, useMediaQuery } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
-import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 import StageScaler from '@/common/ui/StageScaler.vue'
-import { Board, PILE_ID } from '../modules/board'
+import { Board, NODE_GROUP, PILE_ID } from '../modules/board'
 import { EndTurnDialog, GameOverScreen, HudLayer, itemsFromCards, itemsFromContents, PileViewer, unspentResources } from '../modules/hud'
 import { PromptHost } from '../modules/prompts'
 import { useMatchStore } from '../store/match-store'
@@ -21,6 +21,10 @@ const props = defineProps<{
   transport: MatchTransport
   /** Есть ли связь с сервером (для индикатора «В СЕТИ»). */
   online: boolean
+  /** Соперник на связи. */
+  opponentOnline: boolean
+  /** Момент (Date.now()), когда отключившемуся сопернику засчитают сдачу; null, пока он на связи. */
+  opponentReturnDeadline: number | null
 }>()
 
 const emit = defineEmits<{ leave: [] }>()
@@ -104,6 +108,30 @@ function requestEndTurn(): void {
     run({ type: COMMAND_TYPE.END_TURN })
 }
 
+/*
+ * Горячие клавиши хода: P - разыграть все, A - атаковать, E - конец хода. Работают по физическому положению
+ * клавиши (code), поэтому не зависят от раскладки. Отключены, пока открыто окно (запрос, стопка, предупреждение).
+ */
+useEventListener(window, 'keydown', (event: KeyboardEvent) => {
+  if (event.repeat || event.ctrlKey || event.metaKey || event.altKey)
+    return
+  const target = event.target
+  if (target instanceof HTMLElement && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)))
+    return
+  if (!table.value || table.value.winner !== null || !interactive.value || document.querySelector('[role="dialog"]'))
+    return
+  const legal = legalIndex.value
+  if (event.code === 'KeyP' && !store.playingAll && store.playableCount > 0)
+    store.playAll()
+  else if (event.code === 'KeyA' && legal.attackPlayerAmount > 0)
+    attackPlayer(legal.attackPlayerAmount)
+  else if (event.code === 'KeyE' && legal.canEndTurn)
+    requestEndTurn()
+  else
+    return
+  event.preventDefault()
+})
+
 // Ход сменился сам (таймаут, сдача): предупреждение больше не нужно.
 watch(() => table.value?.currentPlayer, () => {
   endTurnWarning.value = null
@@ -113,6 +141,15 @@ function confirmEndTurn(): void {
   endTurnWarning.value = null
   run({ type: COMMAND_TYPE.END_TURN })
 }
+
+// Когда открылся ваш запрос на сброс, фокус уходит в руку: карту для сброса выбирают в ней, а не в окне.
+watch([() => table.value?.prompt?.id, busy], async () => {
+  const prompt = table.value?.prompt
+  if (prompt?.kind !== PROMPT_KIND.DISCARD || prompt.player !== table.value?.you || busy.value)
+    return
+  await nextTick()
+  board.value?.focusGroup(NODE_GROUP.HAND)
+})
 
 // Выбор карты для сброса относится к конкретному prompt: новый prompt начинается без выбора.
 const pending = computed(() => table.value?.prompt ?? null)
@@ -136,6 +173,8 @@ watch(pending, () => {
         :fx="fx"
         :banner="banner"
         :online="online"
+        :opponent-online="opponentOnline"
+        :opponent-return-deadline="opponentReturnDeadline"
         :play-all-count="store.playingAll ? 0 : store.playableCount"
         @attack="attackPlayer"
         @end-turn="requestEndTurn"
@@ -196,7 +235,7 @@ watch(pending, () => {
 .match {
   position: absolute;
   inset: 0;
-  overflow: hidden;
+  overflow: clip;
   font-family: var(--font-text);
 }
 

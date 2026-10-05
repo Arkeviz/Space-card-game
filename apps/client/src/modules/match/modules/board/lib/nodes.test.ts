@@ -2,9 +2,10 @@ import type { GameState, PlayerId } from '@space/engine'
 import { ABILITY_KIND, COMMAND_TYPE, createGame, legalActions, redact } from '@space/engine'
 import { describe, expect, it } from 'vitest'
 import { CARD_FORM, CARD_STATE } from '@/modules/cards'
+import { RECT } from '../../../lib/rects'
 import { buildTable, indexLegalActions } from '../../table'
-import { basePoses, boardLayout, fieldGeometry, handPoses, layoutOf, opponentHandPoses, previewPlacement, shipPoses, tradeSlotPose } from './layout'
-import { buildNodes, NODE_CLICK, NODE_KEY, NODE_ZONE } from './nodes'
+import { basePoses, boardLayout, DROP_ZONE, dropRects, fieldGeometry, handPoses, insideAny, layoutOf, opponentHandPoses, previewPlacement, shipPoses, tradeSlotPose } from './layout'
+import { applyRoving, buildNodes, focusables, navigateTarget, NODE_CLICK, NODE_GROUP, NODE_KEY, NODE_ZONE } from './nodes'
 
 function nodesFor(state: GameState, viewer: PlayerId, hoverKey: string | null = null) {
   const table = buildTable(redact(state, viewer))
@@ -165,5 +166,74 @@ describe('buildNodes', () => {
     expect(nodes.filter(node => node.zone === NODE_ZONE.DISCARD).map(node => node.key)).toEqual(['d2', 'd3'])
     const scrapped = nodes.find(node => node.key === 's1')!
     expect(scrapped.pose.opacity).toBe(0)
+  })
+})
+
+describe('перетаскивание', () => {
+  it('сыграть можно перетащив карту руки на стол, купить - перетащив карту рынка на ваши колоды', () => {
+    const state = myTurnState()
+    const { nodes } = nodesFor(state, 0)
+    const hand = nodes.find(node => node.zone === NODE_ZONE.HAND && node.drag)!
+    expect(hand.drag).toMatchObject({ command: { type: COMMAND_TYPE.PLAY_CARD }, zone: DROP_ZONE.TABLE })
+    // Команда у перетаскивания та же, что и у клика.
+    expect(hand.click).toMatchObject({ command: hand.drag!.command })
+
+    // Торговли 2: хватает на Исследователя, но не на дорогие карты ряда.
+    const explorer = nodes.find(node => node.zone === NODE_ZONE.EXPLORERS)!
+    expect(explorer.drag).toMatchObject({ command: { type: COMMAND_TYPE.BUY_EXPLORER }, zone: DROP_ZONE.OWN_SIDE })
+    const expensive = nodes.filter(node => node.zone === NODE_ZONE.TRADE_ROW && !node.drag)
+    expect(expensive.length).toBeGreaterThan(0)
+    expect(expensive.every(node => node.click === null)).toBe(true)
+  })
+
+  it('зоны броска: стол выше руки; для покупки - нижняя полоса с колодами, рукой и панелью авторитета, но не ваше поле', () => {
+    const field = boardLayout(true).selfField.rect
+    const table = dropRects(DROP_ZONE.TABLE)
+    expect(insideAny(table, 900, 300)).toBe(true)
+    expect(insideAny(table, 900, RECT.SELF_HAND.y + 50)).toBe(false)
+
+    const own = dropRects(DROP_ZONE.OWN_SIDE)
+    expect(insideAny(own, field.x + 100, field.y + 50)).toBe(false)
+    expect(insideAny(own, RECT.SELF_PILES.x + 50, RECT.SELF_PILES.y + 50)).toBe(true)
+    expect(insideAny(own, RECT.SELF_PANEL.x + 50, RECT.SELF_PANEL.y + 50)).toBe(true)
+    expect(insideAny(own, 900, 300)).toBe(false)
+  })
+})
+
+describe('клавиатура', () => {
+  it('в каждой группе в обход Tab входит одна карта: запомненная или крайняя левая', () => {
+    const { nodes } = nodesFor(myTurnState(), 0)
+    const hand = nodes.filter(node => node.group === NODE_GROUP.HAND && node.click)
+    const rest = applyRoving(nodes, {})
+    expect(rest.filter(node => node.group === NODE_GROUP.HAND && node.tabbable)).toHaveLength(1)
+    expect(hand.length).toBeGreaterThan(1)
+    const leftmost = [...hand].sort((a, b) => a.pose.x - b.pose.x)[0]!
+    expect(leftmost.tabbable).toBe(true)
+
+    const second = [...hand].sort((a, b) => a.pose.x - b.pose.x)[1]!
+    applyRoving(nodes, { [NODE_GROUP.HAND]: second.key })
+    expect(second.tabbable).toBe(true)
+    expect(leftmost.tabbable).toBe(false)
+  })
+
+  it('стрелки: влево и вправо по группе, вверх и вниз между группами к ближайшей по горизонтали карте', () => {
+    const { nodes } = nodesFor(myTurnState(), 0)
+    const hand = focusables(nodes, NODE_GROUP.HAND)
+    expect(navigateTarget(nodes, hand[0]!, 'ArrowLeft')).toBeNull()
+    expect(navigateTarget(nodes, hand[0]!, 'ArrowRight')).toBe(hand[1])
+    expect(navigateTarget(nodes, hand[0]!, 'End')).toBe(hand.at(-1))
+    expect(navigateTarget(nodes, hand.at(-1)!, 'Home')).toBe(hand[0])
+
+    const up = navigateTarget(nodes, hand[0]!, 'ArrowUp')
+    expect(up?.group).toBe(NODE_GROUP.TRADE)
+    // Из верхней группы вниз возвращаемся в руку; выше торгового ряда у нас никого нет.
+    expect(navigateTarget(nodes, up!, 'ArrowDown')?.group).toBe(NODE_GROUP.HAND)
+    expect(navigateTarget(nodes, up!, 'ArrowUp')).toBeNull()
+  })
+
+  it('узлы без клика (чужая рука, декор) в навигации не участвуют', () => {
+    const { nodes } = nodesFor(myTurnState(), 0)
+    expect(focusables(nodes, NODE_GROUP.HAND).every(node => node.click !== null)).toBe(true)
+    expect(nodes.filter(node => node.zone === NODE_ZONE.OPPONENT_HAND).every(node => node.group === null)).toBe(true)
   })
 })

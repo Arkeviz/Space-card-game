@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import type { FxItem } from '../lib/fx'
+import { computed } from 'vue'
+import { useTick } from '@/common/composables/useTick'
 import AppIcon from '@/common/ui/AppIcon.vue'
 import { ICON } from '@/common/ui/icons'
+import { formatClock } from '../lib/turn-info'
 import FxFloat from './FxFloat.vue'
 
-defineProps<{
+const props = defineProps<{
   authority: number
   handCount: number
   /** Сейчас ход соперника. */
@@ -13,10 +16,21 @@ defineProps<{
   protectedByOutpost: boolean
   /** Сколько можно нанести игроку (0 - атаковать нельзя). */
   attackAmount: number
+  /** Соперник на связи. */
+  online: boolean
+  /** Момент (Date.now()), когда отключившемуся сопернику засчитают сдачу; null, пока он на связи. */
+  returnDeadline: number | null
   fx: FxItem[]
 }>()
 
 defineEmits<{ attack: [] }>()
+
+const now = useTick()
+const returnClock = computed(() => {
+  if (props.returnDeadline === null)
+    return ''
+  return formatClock(Math.max(0, props.returnDeadline - now.value.getTime()))
+})
 </script>
 
 <template>
@@ -35,7 +49,9 @@ defineEmits<{ attack: [] }>()
     </button>
     <div class="panel__info">
       <p class="panel__name">
-        Соперник
+        <span class="panel__dot" :class="{ 'panel__dot--offline': !online }" aria-hidden="true" />
+        <span>Соперник</span>
+        <span class="visually-hidden">{{ online ? ', на связи' : ', нет связи' }}</span>
       </p>
       <p class="panel__sub">
         РУКА {{ handCount }}
@@ -52,6 +68,10 @@ defineEmits<{ attack: [] }>()
       </p>
     </div>
 
+    <p v-if="!online" class="panel__offline" role="status">
+      <AppIcon :name="ICON.CLOCK" :size="12" />
+      <span>НЕТ СВЯЗИ<template v-if="returnDeadline !== null"> · СДАЧА ЧЕРЕЗ {{ returnClock }}</template></span>
+    </p>
     <p v-if="protectedByOutpost" class="panel__badge">
       <AppIcon :name="ICON.LOCK" :size="12" />
       <span>ЗАЩИЩЁН АВАНПОСТОМ</span>
@@ -109,6 +129,38 @@ defineEmits<{ attack: [] }>()
   flex-direction: column;
   gap: 6px;
   min-width: 0;
+}
+
+.panel__dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 7px;
+  border-radius: 50%;
+  background: var(--c-authority);
+  vertical-align: 1px;
+}
+
+.panel__dot--offline {
+  background: var(--c-combat);
+}
+
+.panel__offline {
+  position: absolute;
+  top: -12px;
+  left: 14px;
+  z-index: 3;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  height: 22px;
+  padding: 0 9px 0 7px;
+  background: #2a1214;
+  color: #ff8c84;
+  font: 600 10px/1 var(--font-mono);
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+  box-shadow: inset 0 0 0 1px rgba(255, 90, 79, 0.6);
 }
 
 .panel__name {

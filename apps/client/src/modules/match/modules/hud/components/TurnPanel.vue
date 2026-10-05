@@ -97,20 +97,21 @@ const combatFx = computed(() => props.fx.filter(item => item.target === FX_TARGE
       <span>{{ hint.text }}</span>
     </p>
 
-    <button v-if="info.mine" type="button" class="play-all" :disabled="playAllCount === 0" @click="$emit('playAll')">
-      РАЗЫГРАТЬ ВСЕ<template v-if="playAllCount > 0">
-        · {{ playAllCount }}
-      </template>
+    <button v-if="info.mine" type="button" class="play-all" aria-keyshortcuts="P" :disabled="playAllCount === 0" @click="$emit('playAll')">
+      <span>РАЗЫГРАТЬ ВСЕ<template v-if="playAllCount > 0"> · {{ playAllCount }}</template></span>
+      <kbd class="key" aria-hidden="true">P</kbd>
     </button>
 
     <!-- Кнопка остаётся на месте и после разрушения базы: без атаки она просто неактивна. -->
-    <button v-if="info.mine" type="button" class="attack" :disabled="attackAmount === 0" @click="$emit('attack')">
+    <button v-if="info.mine" type="button" class="attack" aria-keyshortcuts="A" :disabled="attackAmount === 0" @click="$emit('attack')">
       <AppIcon :name="ICON.COMBAT" :size="16" :stroke="2.2" />
       <span>АТАКОВАТЬ<template v-if="attackAmount > 0"> · {{ attackAmount }}</template></span>
+      <kbd class="key" aria-hidden="true">A</kbd>
     </button>
 
-    <button type="button" class="end" :disabled="!canEndTurn" @click="$emit('endTurn')">
-      {{ info.mine ? 'КОНЕЦ ХОДА' : 'ХОД СОПЕРНИКА' }}
+    <button type="button" class="end" aria-keyshortcuts="E" :disabled="!canEndTurn" @click="$emit('endTurn')">
+      <span>{{ info.mine ? 'КОНЕЦ ХОДА' : 'ХОД СОПЕРНИКА' }}</span>
+      <kbd v-if="info.mine" class="key key--end" aria-hidden="true">E</kbd>
     </button>
   </aside>
 </template>
@@ -266,7 +267,29 @@ const combatFx = computed(() => props.fx.filter(item => item.target === FX_TARGE
   margin-top: 1px;
 }
 
+/* Подсказка горячей клавиши в углу кнопки. */
+.key {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  color: var(--c-muted);
+  font: 600 12px/1 var(--font-mono);
+  box-shadow: inset 0 0 0 1px rgba(143, 163, 200, 0.4);
+  transform: translateY(-50%);
+}
+
+.key--end {
+  color: var(--c-me-ink);
+  box-shadow: inset 0 0 0 1px rgba(4, 19, 26, 0.5);
+}
+
 .play-all {
+  position: relative;
   height: 44px;
   margin: 0;
   padding: 0;
@@ -290,6 +313,7 @@ const combatFx = computed(() => props.fx.filter(item => item.target === FX_TARGE
 }
 
 .attack {
+  position: relative;
   display: flex;
   gap: 10px;
   align-items: center;
@@ -317,6 +341,7 @@ const combatFx = computed(() => props.fx.filter(item => item.target === FX_TARGE
 }
 
 .end {
+  position: relative;
   height: 64px;
   margin: 0;
   padding: 0;

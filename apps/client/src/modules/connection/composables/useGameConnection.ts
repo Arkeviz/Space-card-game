@@ -2,7 +2,7 @@ import type { Command } from '@space/engine'
 import type { ClientMessage, ServerMessage } from '@space/protocol'
 import type { App, ComputedRef, InjectionKey } from 'vue'
 import type { CommandResult, UpdateListener } from '../lib/connection-state'
-import { CLIENT_MESSAGE, HEARTBEAT } from '@space/protocol'
+import { CLIENT_MESSAGE, HEARTBEAT, MATCH_ERROR, SERVER_MESSAGE } from '@space/protocol'
 import { useIntervalFn, useWebSocket } from '@vueuse/core'
 import { computed, inject, reactive, watch } from 'vue'
 import { ConnectionState } from '../lib/connection-state'
@@ -90,6 +90,9 @@ export function createGameConnection(wsUrl: string): GameConnection {
     const reconnectInfo = state.handleServerMessage(message)
     if (reconnectInfo)
       writeStoredReconnect(reconnectInfo)
+    // Комната удалена на сервере: сохранённый токен бесполезен, иначе страница при каждой загрузке пыталась бы вернуться.
+    if (message.type === SERVER_MESSAGE.ERROR && message.reason === MATCH_ERROR.EXPIRED)
+      writeStoredReconnect(null)
   }
 
   socket = useWebSocket(wsUrl, {

@@ -2,7 +2,8 @@
 import type { CardInstance, ScrapZone } from '@space/engine'
 import type { LegalIndex, TableState } from '../../table'
 import { SCRAP_ZONE } from '@space/engine'
-import { computed, ref } from 'vue'
+import { computed, ref, useTemplateRef } from 'vue'
+import { useRovingFocus } from '@/common/composables/useRovingFocus'
 import AppDialog from '@/common/ui/AppDialog.vue'
 import AppIcon from '@/common/ui/AppIcon.vue'
 import GameButton from '@/common/ui/GameButton.vue'
@@ -29,6 +30,8 @@ const emit = defineEmits<{
 }>()
 
 const selected = ref<string | null>(null)
+const grid = useTemplateRef<HTMLElement>('grid')
+const roving = useRovingFocus(grid)
 
 const ZONE_TITLE: Record<ScrapZone, string> = {
   [SCRAP_ZONE.HAND]: 'РУКА',
@@ -65,6 +68,16 @@ function confirm(): void {
   if (selected.value)
     emit('choose', selected.value)
 }
+
+/** Enter на карте: выбрать её, а если она уже выбрана - подтвердить (Пробел только переключает выбор). */
+function onEnter(cardId: string): void {
+  if (selected.value === cardId)
+    confirm()
+  else
+    selected.value = cardId
+}
+
+const order = computed(() => sections.value.flatMap(section => section.cards.map(card => card.id)))
 </script>
 
 <template>
@@ -77,22 +90,27 @@ function confirm(): void {
       {{ lead }}
     </p>
 
-    <div v-for="section in sections" :key="section.zone" class="section">
-      <p class="section__title">
-        {{ section.title }} · {{ section.cards.length }}
-      </p>
-      <div class="section__cards">
-        <button
-          v-for="card in section.cards"
-          :key="card.id"
-          type="button"
-          class="pick"
-          :aria-label="`Утилизировать «${cardName(card.cardId)}»`"
-          :aria-pressed="selected === card.id"
-          @click="selected = selected === card.id ? null : card.id"
-        >
-          <CardThumb :card-id="card.cardId" :scale="0.7" zoom :state="selected === card.id ? CARD_STATE.SELECTED : CARD_STATE.SELECTABLE" />
-        </button>
+    <div ref="grid" class="sections" @keydown="roving.onKeydown" @focusin="roving.onFocusin">
+      <div v-for="section in sections" :key="section.zone" class="section">
+        <p class="section__title">
+          {{ section.title }} · {{ section.cards.length }}
+        </p>
+        <div class="section__cards">
+          <button
+            v-for="card in section.cards"
+            :key="card.id"
+            type="button"
+            class="pick"
+            :data-roving="card.id"
+            :tabindex="roving.tabindexFor(card.id, order.indexOf(card.id))"
+            :aria-label="`Утилизировать «${cardName(card.cardId)}»`"
+            :aria-pressed="selected === card.id"
+            @click="selected = selected === card.id ? null : card.id"
+            @keydown.enter.prevent="onEnter(card.id)"
+          >
+            <CardThumb :card-id="card.cardId" :scale="0.7" zoom :state="selected === card.id ? CARD_STATE.SELECTED : CARD_STATE.SELECTABLE" />
+          </button>
+        </div>
       </div>
     </div>
 
@@ -117,6 +135,12 @@ function confirm(): void {
   margin: 0;
   color: var(--c-text-soft);
   font: 400 16px/22px var(--font-text);
+}
+
+.sections {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
 }
 
 .section {

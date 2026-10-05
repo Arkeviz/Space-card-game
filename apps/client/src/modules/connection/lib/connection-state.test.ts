@@ -147,3 +147,34 @@ describe('connectionState: ожидающие команды', () => {
     expect(b).not.toHaveBeenCalled()
   })
 })
+
+describe('connectionState: статус соперника и удаление комнаты', () => {
+  const update: UpdateMessage = { type: SERVER_MESSAGE.UPDATE, version: 1, events: [], view, legalActions: [], turnTimeLeftMs: null }
+
+  it('opponent-status запоминает отключение и отсчёт до сдачи, update их не затирает', () => {
+    const state = new ConnectionState()
+    state.handleServerMessage(update)
+    expect(state.opponentConnected).toBe(true)
+
+    state.handleServerMessage({ type: SERVER_MESSAGE.OPPONENT_STATUS, connected: false, reconnectTimeLeftMs: 60_000 })
+    expect(state.opponentConnected).toBe(false)
+    expect(state.opponentReconnectTimeLeftMs).toBe(60_000)
+
+    // Автоход по таймауту приходит update'ом, но соперник от этого на связь не вернулся.
+    state.handleServerMessage({ ...update, version: 2 })
+    expect(state.opponentConnected).toBe(false)
+
+    state.handleServerMessage({ type: SERVER_MESSAGE.OPPONENT_STATUS, connected: true, reconnectTimeLeftMs: null })
+    expect(state.opponentConnected).toBe(true)
+    expect(state.opponentReconnectTimeLeftMs).toBeNull()
+  })
+
+  it('expired выводит из матча, но оставляет причину для лобби', () => {
+    const state = new ConnectionState()
+    state.handleServerMessage({ type: SERVER_MESSAGE.JOINED, matchId: 'm1', code: 'ABC123', you: 0, token: 't1', opponentConnected: false })
+    state.handleServerMessage({ type: SERVER_MESSAGE.ERROR, reason: MATCH_ERROR.EXPIRED })
+    expect(state.matchId).toBeNull()
+    expect(state.code).toBeNull()
+    expect(state.lastError).toBe(MATCH_ERROR.EXPIRED)
+  })
+})

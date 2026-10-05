@@ -34,10 +34,11 @@ const style = computed(() => ({
 </template>
 
 <style scoped>
+/* overflow: clip, а не hidden: hidden - прокручиваемый контейнер, и фокус на карте у края сцены сдвигал бы всю сцену. */
 .stage-viewport {
   position: fixed;
   inset: 0;
-  overflow: hidden;
+  overflow: clip;
   background: var(--c-bg);
 }
 
@@ -45,7 +46,7 @@ const style = computed(() => ({
   position: absolute;
   top: 50%;
   left: 50%;
-  overflow: hidden;
+  overflow: clip;
   transform-origin: 50% 50%;
 }
 </style>
