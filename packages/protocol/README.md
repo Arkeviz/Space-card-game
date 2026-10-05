@@ -31,16 +31,18 @@ src/
 | `sync` | - | запросить полный снимок состояния без анимаций |
 
 `command` внутри `command`-сообщения проверяется `CommandSchema` из `command.ts` - она зеркалит union `Command` из
-`@space/engine` по каждому из 11 вариантов (включая `CONCEDE`). При добавлении нового варианта в `engine` эту схему
+`@space/engine` по каждому из 12 вариантов (включая `CONCEDE` и `CHOOSE_CARDS`). При добавлении нового варианта в `engine` эту схему
 нужно обновить руками - типы её не свяжут автоматически.
 
 ## Сервер -> клиент: `server.ts`
 
-Типы (`JoinedMessage`, `UpdateMessage`, `AckMessage`, `RejectMessage`, `ErrorMessage`) есть, но схем Valibot для них
+Типы (`JoinedMessage`, `UpdateMessage`, `OpponentStatusMessage`, `AckMessage`, `RejectMessage`, `ErrorMessage`) есть, но схем Valibot для них
 **нет**: сервер - доверенный источник, его собственную форму сообщений уже гарантирует TypeScript в момент отправки.
 Если понадобится защита от багов на стороне клиента (например, при парсинге `update`), это можно добавить позже.
 
-`MATCH_ERROR` - ошибки уровня матча (`not-found`, `full`, `invalid-token`, `not-in-match`, `already-in-match`),
+`opponent-status` (`connected`, `reconnectTimeLeftMs`) приходит, когда соперник отключился или вернулся, и в ответ на вход/переподключение; `reconnectTimeLeftMs` - сколько осталось до автоматической сдачи отключившегося (`null`, пока он на связи).
+
+`MATCH_ERROR` - ошибки уровня матча (`not-found`, `full`, `invalid-token`, `not-in-match`, `already-in-match`, `expired` - комната удалена, пока создатель ждал соперника),
 отдельно от `CommandError` из `@space/engine` (ошибки конкретной команды, приходят в `reject.reason`).
 
 Логика комнат матчей и таймаутов живёт в `apps/server` (`match-manager.ts`), не здесь.

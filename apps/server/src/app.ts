@@ -15,6 +15,7 @@ export function buildApp(matchManagerOptions?: MatchManagerOptions) {
   const app = Fastify()
   const manager = new MatchManager(matchManagerOptions)
 
+  app.addHook('onClose', () => manager.dispose())
   app.register(websocket)
   app.register(async (instance) => {
     instance.get('/ws', { websocket: true }, (socket) => {

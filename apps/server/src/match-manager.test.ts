@@ -285,3 +285,141 @@ describe('matchManager: таймауты', () => {
     expect(room.state!.turn).toBe(turnAfterConcede)
   })
 })
+
+describe('matchManager: удаление комнат', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    return () => vi.useRealTimers()
+  })
+
+  it('комната без соперника удаляется по таймауту ожидания, создатель получает expired', () => {
+    const manager = new MatchManager({ firstPlayer: 0, waitingTimeoutMs: 5000 })
+    const socket = fakeSocket()
+    const { room } = manager.createMatch(socket)
+    expect(manager.roomCount).toBe(1)
+
+    vi.advanceTimersByTime(4999)
+    expect(manager.roomCount).toBe(1)
+    vi.advanceTimersByTime(1)
+    expect(manager.roomCount).toBe(0)
+    expect((socket as unknown as FakeSocket).lastOf(SERVER_MESSAGE.ERROR)).toMatchObject({ reason: MATCH_ERROR.EXPIRED })
+    expect((socket as unknown as FakeSocket).closed).toBe(true)
+    // Код больше не действует.
+    expect(manager.joinMatch(fakeSocket(), room.code)).toEqual({ error: MATCH_ERROR.NOT_FOUND })
+  })
+
+  it('вход соперника отменяет удаление ожидающей комнаты', () => {
+    const manager = new MatchManager({ firstPlayer: 0, waitingTimeoutMs: 5000 })
+    const { room } = manager.createMatch(fakeSocket())
+    manager.joinMatch(fakeSocket(), room.code)
+    vi.advanceTimersByTime(60_000)
+    expect(manager.roomCount).toBe(1)
+  })
+
+  it('создатель ушёл, не дождавшись: комната удаляется через таймаут отключения, возвращение продлевает ожидание', () => {
+    const manager = new MatchManager({ firstPlayer: 0, waitingTimeoutMs: 60_000, disconnectTimeoutMs: 1000 })
+    const socket = fakeSocket()
+    const { room } = manager.createMatch(socket)
+    manager.handleDisconnect(room, 0, socket)
+
+    vi.advanceTimersByTime(500)
+    manager.reconnect(fakeSocket(), room.id, room.seats[0].token)
+    vi.advanceTimersByTime(5000)
+    expect(manager.roomCount).toBe(1)
+
+    const second = fakeSocket()
+    manager.handleDisconnect(room, 0, room.seats[0].socket!)
+    vi.advanceTimersByTime(1000)
+    expect(manager.roomCount).toBe(0)
+    expect(second).toBeDefined()
+  })
+
+  it('законченная партия удаляется после срока хранения, до этого к ней можно вернуться', () => {
+    const manager = new MatchManager({ firstPlayer: 0, finishedTtlMs: 5000 })
+    const { room } = manager.createMatch(fakeSocket())
+    manager.joinMatch(fakeSocket(), room.code)
+    manager.submitCommand(room, 0, 'concede', { type: COMMAND_TYPE.CONCEDE })
+
+    vi.advanceTimersByTime(4000)
+    expect('error' in manager.reconnect(fakeSocket(), room.id, room.seats[1].token)).toBe(false)
+    vi.advanceTimersByTime(1000)
+    expect(manager.roomCount).toBe(0)
+  })
+
+  it('игрок молчит несколько ходов подряд: ему засчитывается сдача, команда игрока обнуляет счётчик', () => {
+    const manager = new MatchManager({ firstPlayer: 0, turnTimeoutMs: 1000, maxIdleActions: 2 })
+    const socket0 = fakeSocket()
+    const socket1 = fakeSocket()
+    const { room } = manager.createMatch(socket0)
+    manager.joinMatch(socket1, room.code)
+
+    // Игрок 0 один раз промолчал, потом сходил сам - счётчик обнулился.
+    vi.advanceTimersByTime(1000)
+    expect(room.idleActions[0]).toBe(1)
+    manager.submitCommand(room, 1, 'a', { type: COMMAND_TYPE.END_TURN }, socket1 as never)
+    manager.submitCommand(room, 0, 'b', { type: COMMAND_TYPE.END_TURN }, socket0 as never)
+    expect(room.idleActions[0]).toBe(0)
+
+    // Игрок 1 молчит дважды подряд (его ход, потом снова его ход после хода игрока 0).
+    vi.advanceTimersByTime(1000)
+    expect(room.state!.winner).toBeNull()
+    manager.submitCommand(room, 0, 'c', { type: COMMAND_TYPE.END_TURN }, socket0 as never)
+    vi.advanceTimersByTime(1000)
+    expect(room.state!.winner).toBe(0)
+  })
+
+  it('dispose останавливает все таймеры и убирает комнаты', () => {
+    const manager = new MatchManager({ firstPlayer: 0, turnTimeoutMs: 1000 })
+    const { room } = manager.createMatch(fakeSocket())
+    manager.joinMatch(fakeSocket(), room.code)
+    manager.dispose()
+    expect(manager.roomCount).toBe(0)
+    vi.advanceTimersByTime(10_000)
+    expect(room.state!.turn).toBe(1)
+  })
+})
+
+describe('matchManager: статус соперника', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    return () => vi.useRealTimers()
+  })
+
+  it('создатель узнаёт о входе соперника, отключение и возвращение рассылаются с отсчётом до сдачи', () => {
+    const manager = new MatchManager({ firstPlayer: 0, disconnectTimeoutMs: 10_000 })
+    const socket0 = fakeSocket()
+    const socket1 = fakeSocket()
+    const { room } = manager.createMatch(socket0)
+    manager.joinMatch(socket1, room.code)
+    expect((socket0 as unknown as FakeSocket).lastOf(SERVER_MESSAGE.OPPONENT_STATUS)).toEqual({
+      type: SERVER_MESSAGE.OPPONENT_STATUS,
+      connected: true,
+      reconnectTimeLeftMs: null,
+    })
+
+    manager.handleDisconnect(room, 1, socket1)
+    expect((socket0 as unknown as FakeSocket).lastOf(SERVER_MESSAGE.OPPONENT_STATUS)).toMatchObject({ connected: false, reconnectTimeLeftMs: 10_000 })
+
+    vi.advanceTimersByTime(4000)
+    const back = fakeSocket()
+    manager.reconnect(back, room.id, room.seats[1].token)
+    expect((socket0 as unknown as FakeSocket).lastOf(SERVER_MESSAGE.OPPONENT_STATUS)).toMatchObject({ connected: true, reconnectTimeLeftMs: null })
+    // Вернувшийся игрок тоже получает статус соперника.
+    expect((back as unknown as FakeSocket).lastOf(SERVER_MESSAGE.OPPONENT_STATUS)).toMatchObject({ connected: true })
+  })
+
+  it('вернувшийся игрок узнаёт, что соперник ещё не вернулся', () => {
+    const manager = new MatchManager({ firstPlayer: 0, disconnectTimeoutMs: 10_000 })
+    const socket0 = fakeSocket()
+    const socket1 = fakeSocket()
+    const { room } = manager.createMatch(socket0)
+    manager.joinMatch(socket1, room.code)
+    manager.handleDisconnect(room, 0, socket0)
+    vi.advanceTimersByTime(3000)
+    manager.handleDisconnect(room, 1, socket1)
+
+    const back = fakeSocket()
+    manager.reconnect(back, room.id, room.seats[1].token)
+    expect((back as unknown as FakeSocket).lastOf(SERVER_MESSAGE.OPPONENT_STATUS)).toMatchObject({ connected: false, reconnectTimeLeftMs: 7000 })
+  })
+})

@@ -14,6 +14,8 @@ export const SERVER_MESSAGE = {
   ACK: 'ack',
   /** Команда игрока отклонена. */
   REJECT: 'reject',
+  /** Соперник отключился или вернулся: нужен для индикатора связи и отсчёта до автоматической сдачи. */
+  OPPONENT_STATUS: 'opponent-status',
   /** Ошибка уровня матча (не связанная с конкретной командой): неверный код, матч заполнен и т. п. */
   ERROR: 'error',
 } as const
@@ -24,6 +26,8 @@ export const MATCH_ERROR = {
   INVALID_TOKEN: 'invalid-token',
   NOT_IN_MATCH: 'not-in-match',
   ALREADY_IN_MATCH: 'already-in-match',
+  /** Комната удалена: никто не занял второе место слишком долго. */
+  EXPIRED: 'expired',
 } as const
 export type MatchError = (typeof MATCH_ERROR)[keyof typeof MATCH_ERROR]
 
@@ -60,9 +64,16 @@ export interface RejectMessage {
   reason: CommandError
 }
 
+export interface OpponentStatusMessage {
+  type: typeof SERVER_MESSAGE.OPPONENT_STATUS
+  connected: boolean
+  /** Сколько мс до автоматической сдачи отключившегося соперника; null, пока он на связи или партия не идёт. */
+  reconnectTimeLeftMs: number | null
+}
+
 export interface ErrorMessage {
   type: typeof SERVER_MESSAGE.ERROR
   reason: MatchError
 }
 
-export type ServerMessage = AckMessage | ErrorMessage | JoinedMessage | RejectMessage | UpdateMessage
+export type ServerMessage = AckMessage | ErrorMessage | JoinedMessage | OpponentStatusMessage | RejectMessage | UpdateMessage

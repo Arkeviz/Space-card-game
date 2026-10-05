@@ -8,6 +8,7 @@ export type {
   ErrorMessage,
   JoinedMessage,
   MatchError,
+  OpponentStatusMessage,
   RejectMessage,
   ServerMessage,
   UpdateMessage,

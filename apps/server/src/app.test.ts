@@ -72,6 +72,8 @@ describe('ws matchmaking: сквозной сценарий через реал�
       const joined1 = await joinerMessages.next()
       expect(joined1).toMatchObject({ type: SERVER_MESSAGE.JOINED, you: 1, opponentConnected: true })
 
+      // Создатель сначала узнаёт, что соперник на связи, и только потом получает первый update.
+      expect(await creatorMessages.next()).toEqual({ type: SERVER_MESSAGE.OPPONENT_STATUS, connected: true, reconnectTimeLeftMs: null })
       const creatorUpdate = await creatorMessages.next()
       expect(creatorUpdate).toMatchObject({ type: SERVER_MESSAGE.UPDATE, version: 0 })
       const joinerUpdate = await joinerMessages.next()
