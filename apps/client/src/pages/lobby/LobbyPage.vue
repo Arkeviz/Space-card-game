@@ -41,5 +41,6 @@ watch(() => connection.state.view, (view) => {
     :error="error"
     @create="connection.createMatch()"
     @join="connection.joinMatch($event)"
+    @catalog="router.push('/cards')"
   />
 </template>

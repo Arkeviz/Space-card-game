@@ -16,6 +16,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   create: []
   join: [code: string]
+  catalog: []
 }>()
 
 const CODE_LENGTH = 6
@@ -34,9 +35,9 @@ function submit(): void {
       <OrbitDecor />
 
       <div class="lobby__column">
-        <div class="lobby__eyebrow">
+        <p class="lobby__eyebrow">
           ДУЭЛЬ 1 НА 1 · КОЛОДОСТРОИТЕЛЬНАЯ КАРТОЧНАЯ ИГРА
-        </div>
+        </p>
         <h1 class="lobby__title">
           <span>ЗВЁЗДНЫЕ</span>
           <span class="lobby__title-accent">ИМПЕРИИ</span>
@@ -51,9 +52,9 @@ function submit(): void {
               <AppIcon :name="ICON.PLUS" :size="20" :stroke="2.6" />
               <span>Создать матч</span>
             </GameButton>
-            <div class="lobby__hint">
+            <p class="lobby__hint">
               Вы получите код из 6 символов - отправьте его сопернику.
-            </div>
+            </p>
           </div>
 
           <div class="lobby__or">
@@ -83,17 +84,22 @@ function submit(): void {
                 Войти
               </GameButton>
             </div>
-            <div v-if="error" id="join-error" class="lobby__error" role="alert">
+            <p v-if="error" id="join-error" class="lobby__error" role="alert">
               {{ error }}
-            </div>
+            </p>
           </form>
         </div>
+
+        <button type="button" class="lobby__catalog" @click="emit('catalog')">
+          <AppIcon :name="ICON.COPY" :size="18" :stroke="1.8" />
+          <span>КАТАЛОГ КАРТ</span>
+        </button>
       </div>
 
-      <div class="lobby__status" :class="{ 'lobby__status--off': !connected }" role="status">
+      <p class="lobby__status" :class="{ 'lobby__status--off': !connected }" role="status">
         <span class="lobby__dot" />
         <span>{{ connected ? 'СЕРВЕР · ПОДКЛЮЧЕНО' : 'СЕРВЕР · НЕТ СВЯЗИ' }}</span>
-      </div>
+      </p>
     </main>
   </StageScaler>
 </template>
@@ -118,6 +124,28 @@ function submit(): void {
   gap: 28px;
   justify-content: center;
   width: 760px;
+}
+
+.lobby__catalog {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  align-self: flex-start;
+  height: 44px;
+  margin: 0;
+  padding: 0 20px 0 16px;
+  border: 0;
+  background: transparent;
+  color: var(--c-text-quiet);
+  font: 600 14px/1 var(--font-mono);
+  letter-spacing: 0.14em;
+  box-shadow: inset 0 0 0 1px rgba(143, 163, 200, 0.4);
+  cursor: pointer;
+}
+
+.lobby__catalog:hover {
+  color: var(--c-me);
+  box-shadow: inset 0 0 0 1px var(--c-me);
 }
 
 .lobby__eyebrow {
