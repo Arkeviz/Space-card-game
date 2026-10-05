@@ -11,6 +11,8 @@ export type GameEvent
     | { type: typeof EVENT_TYPE.CARD_BOUGHT, player: PlayerId, card: CardInstance, from: 'trade-row' | 'explorers', slot: number | null, to: Destination }
   /** Корабль получен бесплатно и лёг на верх колоды (Blob Carrier). */
     | { type: typeof EVENT_TYPE.CARD_ACQUIRED, player: PlayerId, card: CardInstance, from: 'trade-row' | 'explorers', slot: number | null }
+  /** Игрок обязан сбросить amount карт в начале своего хода (эффект «соперник сбрасывает»). */
+    | { type: typeof EVENT_TYPE.DISCARD_QUEUED, player: PlayerId, amount: number }
   /** Карта на столе скопировала другой корабль (Stealth Needle). */
     | { type: typeof EVENT_TYPE.SHIP_COPIED, player: PlayerId, cardId: string, copyOf: string }
     | { type: typeof EVENT_TYPE.TRADE_ROW_REFILLED, slot: number, card: CardInstance }

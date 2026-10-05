@@ -1,4 +1,4 @@
-import type { AbilityKind, CardKind, EFFECT_TYPE, Faction, PASSIVE_TYPE, Resource, ScrapZone } from './constants.ts'
+import type { AbilityKind, CardKind, CardSet, EFFECT_TYPE, Faction, PASSIVE_TYPE, Resource, ScrapZone } from './constants.ts'
 
 /** Описание эффекта карты. Эффекты выполняются по порядку; часть из них требует выбора игрока (prompt). */
 export type Effect
@@ -28,6 +28,8 @@ export type Passive
 export interface Card {
   id: string
   name: string
+  /** Набор карт; в описаниях каталога можно не указывать, тогда это базовый набор. */
+  set: CardSet
   faction: Faction
   kind: CardKind
   cost: number

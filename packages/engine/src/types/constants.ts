@@ -14,6 +14,12 @@ export const FACTION = {
 } as const
 export type Faction = ValueOf<typeof FACTION>
 
+/** Набор (издание), к которому относится карта. Сейчас играем только базовым, но каталог готов к другим. */
+export const CARD_SET = {
+  CORE: 'core',
+} as const
+export type CardSet = ValueOf<typeof CARD_SET>
+
 export const CARD_KIND = {
   SHIP: 'ship',
   BASE: 'base',
@@ -84,6 +90,8 @@ export const COMMAND_TYPE = {
   ATTACK_BASE: 'ATTACK_BASE',
   CHOOSE_OPTION: 'CHOOSE_OPTION',
   CHOOSE_CARD: 'CHOOSE_CARD',
+  /** Несколько карт за один ответ: сброс из руки по запросу с remaining больше единицы. */
+  CHOOSE_CARDS: 'CHOOSE_CARDS',
   SKIP: 'SKIP',
   END_TURN: 'END_TURN',
   /** Сдаться («concede»). Работает независимо от того, чей сейчас ход или открыт ли prompt (в отличие от всех остальных команд). */
@@ -114,6 +122,7 @@ export const EVENT_TYPE = {
   CARD_PLAYED: 'card-played',
   CARD_BOUGHT: 'card-bought',
   CARD_ACQUIRED: 'card-acquired',
+  DISCARD_QUEUED: 'discard-queued',
   SHIP_COPIED: 'ship-copied',
   TRADE_ROW_REFILLED: 'trade-row-refilled',
   ABILITY_ACTIVATED: 'ability-activated',

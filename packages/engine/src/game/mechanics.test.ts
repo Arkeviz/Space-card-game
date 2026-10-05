@@ -15,11 +15,14 @@ function pick(state: GameState, cardId: string, player: 0 | 1 = 0) {
 const skip = (state: GameState) => run(state, 0, { type: COMMAND_TYPE.SKIP, promptId: state.prompt!.id })
 
 describe('торговая федерация', () => {
-  it('federation Shuttle: союзник даёт 4 авторитета, пока в игре есть другая карта федерации', () => {
+  it('federation Shuttle: союзник сам даёт 4 авторитета, как только в игре появляется другая карта федерации', () => {
     const state = newGame()
-    const [shuttle] = setInPlay(state, 0, ['federation-shuttle', 'cutter'])
-    const result = activate(state, shuttle.id, ABILITY_KIND.ALLY)
+    const [shuttle, post] = setHand(state, 0, ['federation-shuttle', 'trading-post'])
+    let result = play(state, shuttle.id)
+    expect(result.state.players[0].authority).toBe(50)
+    result = play(result.state, post.id)
     expect(result.state.players[0].authority).toBe(54)
+    expect(result.events).toContainEqual({ type: EVENT_TYPE.ABILITY_ACTIVATED, player: 0, cardId: shuttle.id, ability: ABILITY_KIND.ALLY })
   })
 
   it('embassy Yacht: две карты берутся только при двух и более базах', () => {
@@ -39,11 +42,14 @@ describe('торговая федерация', () => {
 
   it('freighter: следующий купленный корабль ложится на верх колоды, второй - в сброс', () => {
     const state = newGame()
-    const [freighter] = setInPlay(state, 0, ['freighter', 'cutter'])
+    const [freighter, post] = setHand(state, 0, ['freighter', 'trading-post'])
     const [first, second] = setRow(state, ['federation-shuttle', 'federation-shuttle', 'cutter', 'cutter', 'cutter'])
     state.pools[RESOURCE.TRADE] = 5
 
-    let result = activate(state, freighter.id, ABILITY_KIND.ALLY)
+    let result = play(state, freighter.id)
+    expect(result.state.nextShipToDeckTop).toBe(false)
+    // Союзник срабатывает сам, когда в игре появляется другая карта федерации.
+    result = play(result.state, post.id)
     expect(result.state.nextShipToDeckTop).toBe(true)
 
     result = run(result.state, 0, { type: COMMAND_TYPE.BUY, cardId: first.id })
@@ -89,6 +95,17 @@ describe('торговая федерация', () => {
 })
 
 describe('слизни', () => {
+  it('союзник с выбором остаётся ручным: не срабатывает сам, а доступен командой', () => {
+    const state = newGame()
+    const [destroyer, fighter] = setHand(state, 0, ['blob-destroyer', 'blob-fighter'])
+    setInPlay(state, 1, ['barter-world'])
+    let result = play(state, destroyer.id)
+    result = play(result.state, fighter.id)
+    expect(result.state.prompt).toBeNull()
+    expect(result.events.some(event => event.type === EVENT_TYPE.ABILITY_ACTIVATED && event.cardId === destroyer.id)).toBe(false)
+    expect(legalActions(result.state, 0)).toContainEqual({ type: COMMAND_TYPE.ACTIVATE, cardId: destroyer.id, ability: ABILITY_KIND.ALLY })
+  })
+
   it('blob Carrier: союзник отдаёт любой корабль из ряда на верх колоды и пополняет ряд', () => {
     const state = newGame()
     const [carrier] = setInPlay(state, 0, ['blob-carrier', 'blob-fighter'])
@@ -196,10 +213,10 @@ describe('технокульт', () => {
     expect(entry.copyOf).toBe('blob-fighter')
     expect(result.events).toContainEqual({ type: EVENT_TYPE.SHIP_COPIED, player: 0, cardId: needle.id, copyOf: 'blob-fighter' })
 
-    // Теперь у иглы способность союзника скопированного корабля (добор), а условие союзника выполнено слизнями.
-    const actions = legalActions(result.state, 0)
-    expect(actions).toContainEqual({ type: COMMAND_TYPE.ACTIVATE, cardId: needle.id, ability: ABILITY_KIND.ALLY })
-    expect(activate(result.state, needle.id, ABILITY_KIND.ALLY).state.players[0].hand).toHaveLength(1)
+    // Теперь игла - слизни: простые способности союзника (добор) сработали сами и у иглы, и у слизня.
+    expect(result.state.players[0].hand).toHaveLength(2)
+    const allyEvents = result.events.filter(event => event.type === EVENT_TYPE.ABILITY_ACTIVATED)
+    expect(allyEvents.map(event => event.cardId).sort()).toEqual([fighter.id, needle.id].sort())
   })
 
   it('stealth Needle без других кораблей просто ложится на стол', () => {
@@ -211,8 +228,9 @@ describe('технокульт', () => {
 
   it('mech World: считается союзником для любой фракции', () => {
     const state = newGame()
-    const [, cutter] = setInPlay(state, 0, ['mech-world', 'cutter'])
-    const result = activate(state, cutter.id, ABILITY_KIND.ALLY)
+    setInPlay(state, 0, ['mech-world'])
+    const [cutter] = setHand(state, 0, ['cutter'])
+    const result = play(state, cutter.id)
     expect(result.state.pools[RESOURCE.COMBAT]).toBe(4)
   })
 

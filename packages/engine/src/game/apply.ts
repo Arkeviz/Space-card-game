@@ -15,6 +15,7 @@ import {
   freshUsage,
   gain,
   hasAlly,
+  openPendingDiscard,
   openPrompt,
   other,
   refillTradeRow,
@@ -23,9 +24,10 @@ import {
   scrapCandidates,
   scrapChosenCard,
   spend,
+  triggerAllies,
 } from './effects.ts'
 
-const PROMPT_COMMANDS = new Set<CommandType>([COMMAND_TYPE.CHOOSE_OPTION, COMMAND_TYPE.CHOOSE_CARD, COMMAND_TYPE.SKIP])
+const PROMPT_COMMANDS = new Set<CommandType>([COMMAND_TYPE.CHOOSE_OPTION, COMMAND_TYPE.CHOOSE_CARD, COMMAND_TYPE.CHOOSE_CARDS, COMMAND_TYPE.SKIP])
 
 function hasOutpost(player: PlayerState): boolean {
   return player.inPlay.some(entry => getCard(entry.card.cardId).kind === CARD_KIND.OUTPOST)
@@ -50,6 +52,9 @@ function playCard(ctx: Ctx, player: PlayerId, cardId: string): CommandError | nu
   p.inPlay.push(played)
   ctx.state.playedThisTurn.push(instance.cardId)
   ctx.events.push({ type: EVENT_TYPE.CARD_PLAYED, player, card: instance })
+
+  // Простые способности союзника срабатывают сразу: и у самой карты, и у тех, кому она стала союзником.
+  triggerAllies(ctx, player)
 
   const card = getCard(instance.cardId)
   if (card.kind === CARD_KIND.SHIP) {
@@ -225,6 +230,10 @@ function endTurn(ctx: Ctx, player: PlayerId): CommandError | null {
   for (const entry of state.players[next].inPlay)
     entry.used = freshUsage()
   ctx.events.push({ type: EVENT_TYPE.TURN_STARTED, player: next, turn: state.turn })
+
+  // Базы с прошлых ходов уже имеют союзников: их простые способности срабатывают сразу, потом - обязательный сброс.
+  triggerAllies(ctx, next)
+  openPendingDiscard(ctx, next)
   return null
 }
 
@@ -244,11 +253,40 @@ function repeatOrFinish(ctx: Ctx, prompt: Extract<Prompt, { kind: typeof PROMPT_
   return null
 }
 
+/**
+ * Сброс нескольких карт одним ответом. Обязательный запрос требует ровно столько карт, сколько осталось сбросить
+ * (но не больше, чем карт в руке), необязательный - от одной до этого числа. Цепочка запроса на этом заканчивается.
+ */
+function discardMany(ctx: Ctx, player: PlayerId, prompt: Prompt, cardIds: readonly string[]): CommandError | null {
+  if (prompt.kind !== PROMPT_KIND.DISCARD)
+    return COMMAND_ERROR.INVALID_CHOICE
+  const { hand } = ctx.state.players[player]
+  const limit = Math.min(prompt.remaining ?? 1, hand.length)
+  const distinct = new Set(cardIds).size === cardIds.length
+  const inHand = cardIds.every(id => hand.some(card => card.id === id))
+  const countOk = prompt.optional ? cardIds.length >= 1 && cardIds.length <= limit : cardIds.length === limit
+  if (!distinct || !inHand || !countOk)
+    return COMMAND_ERROR.INVALID_CHOICE
+
+  for (const id of cardIds) {
+    const card = removeById(hand, id)!
+    ctx.state.players[player].discard.push(card)
+    ctx.events.push({ type: EVENT_TYPE.CARD_DISCARDED, player, card, from: 'hand' })
+    if (prompt.drawPerDiscard)
+      drawCards(ctx, player, 1)
+  }
+  resolveEffects(ctx, closePrompt(ctx), prompt.source)
+  return null
+}
+
 function answerPrompt(ctx: Ctx, player: PlayerId, command: Extract<Command, { promptId: number }>): CommandError | null {
   const { state } = ctx
   const prompt = state.prompt!
   if (command.promptId !== prompt.id)
     return COMMAND_ERROR.WRONG_PROMPT
+
+  if (command.type === COMMAND_TYPE.CHOOSE_CARDS)
+    return discardMany(ctx, player, prompt, command.cardIds)
 
   if (command.type === COMMAND_TYPE.CHOOSE_OPTION) {
     if (prompt.kind !== PROMPT_KIND.CHOICE)
@@ -301,6 +339,8 @@ function answerPrompt(ctx: Ctx, player: PlayerId, command: Extract<Command, { pr
       const copied = copyShip(ctx, player, prompt.source, command.cardId)
       if (copied === null)
         return COMMAND_ERROR.INVALID_CHOICE
+      // Скопированная фракция может сделать корабль союзником (и наоборот).
+      triggerAllies(ctx, player)
       const rest = closePrompt(ctx)
       resolveEffects(ctx, [...copied, ...rest], prompt.source)
       return null
@@ -322,6 +362,7 @@ function execute(ctx: Ctx, player: PlayerId, command: Command): CommandError | n
     case COMMAND_TYPE.CONCEDE: return concede(ctx, player)
     case COMMAND_TYPE.CHOOSE_OPTION:
     case COMMAND_TYPE.CHOOSE_CARD:
+    case COMMAND_TYPE.CHOOSE_CARDS:
     case COMMAND_TYPE.SKIP: return answerPrompt(ctx, player, command)
   }
 }

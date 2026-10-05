@@ -263,12 +263,11 @@ export function resolveEffects(ctx: Ctx, effects: readonly Effect[], source: str
         drawCards(ctx, actor, effect.amount)
         break
       case EFFECT_TYPE.OPPONENT_DISCARD: {
+        // Соперник сбросит карты в начале своего хода (openPendingDiscard), а не посреди хода текущего игрока.
         const opponent = other(actor)
-        if (state.players[opponent].hand.length === 0)
-          break
-        const remaining = effect.amount > 1 ? [{ ...effect, amount: effect.amount - 1 }, ...rest] : rest
-        openPrompt(ctx, { kind: PROMPT_KIND.DISCARD, player: opponent, source }, remaining)
-        return
+        state.pendingDiscards[opponent] += effect.amount
+        ctx.events.push({ type: EVENT_TYPE.DISCARD_QUEUED, player: opponent, amount: effect.amount })
+        break
       }
       case EFFECT_TYPE.SCRAP:
         if (scrapCandidates(state, actor, effect.from).length === 0)
@@ -313,6 +312,52 @@ export function resolveEffects(ctx: Ctx, effects: readonly Effect[], source: str
         return
     }
   }
+}
+
+/** Эффекты, которым нужен выбор игрока: такие способности остаются ручными (активируются командой ACTIVATE). */
+const INTERACTIVE_EFFECTS = new Set<Effect['type']>([
+  EFFECT_TYPE.SCRAP,
+  EFFECT_TYPE.CHOICE,
+  EFFECT_TYPE.DESTROY_BASE,
+  EFFECT_TYPE.ACQUIRE_SHIP,
+  EFFECT_TYPE.DISCARD_DRAW,
+  EFFECT_TYPE.COPY_SHIP,
+])
+
+/** «Простая» способность: ни один из её эффектов не просит выбора, поэтому она срабатывает сама. */
+export function isAutomatic(effects: readonly Effect[]): boolean {
+  return effects.every(effect => !INTERACTIVE_EFFECTS.has(effect.type))
+}
+
+/**
+ * Срабатывание простых способностей союзника: у каждой карты игрока на столе, у которой условие союзника
+ * выполнено, а способность ещё не использована. Вызывается, когда на столе появилась новая карта (розыгрыш,
+ * копирование) и в начале хода игрока (для баз, оставшихся с прошлого хода). Простые эффекты prompt не открывают,
+ * поэтому цепочка не прерывается.
+ */
+export function triggerAllies(ctx: Ctx, player: PlayerId): void {
+  const p = ctx.state.players[player]
+  for (const played of p.inPlay) {
+    if (played.used[ABILITY_KIND.ALLY])
+      continue
+    const effects = effectiveCard(played).abilities[ABILITY_KIND.ALLY]
+    if (!effects || !isAutomatic(effects) || !hasAlly(p, played))
+      continue
+    played.used[ABILITY_KIND.ALLY] = true
+    ctx.events.push({ type: EVENT_TYPE.ABILITY_ACTIVATED, player, cardId: played.card.id, ability: ABILITY_KIND.ALLY })
+    resolveEffects(ctx, effects, played.card.id)
+  }
+}
+
+/** Начало хода: игрок, которому соперник велел сбросить карты, выбирает их. Если рука пуста, долг сгорает. */
+export function openPendingDiscard(ctx: Ctx, player: PlayerId): void {
+  const { state } = ctx
+  const owed = state.pendingDiscards[player]
+  state.pendingDiscards[player] = 0
+  const handSize = state.players[player].hand.length
+  if (owed === 0 || handSize === 0)
+    return
+  openPrompt(ctx, { kind: PROMPT_KIND.DISCARD, player, source: null, remaining: Math.min(owed, handSize) }, [])
 }
 
 /** Пустые пулы хода. Ключи берутся из RESOURCE, а не из литералов. */

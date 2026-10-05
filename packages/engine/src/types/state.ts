@@ -57,6 +57,8 @@ export interface GameState {
   scrapHeap: CardInstance[]
   /** Следующий корабль, полученный в этот ход, ляжет на верх колоды (Freighter, Central Office). */
   nextShipToDeckTop: boolean
+  /** Сколько карт игрок обязан сбросить в начале своего следующего хода (эффект «соперник сбрасывает карту»). */
+  pendingDiscards: [number, number]
   /** cardId всех карт, сыгранных текущим игроком в этот ход (для эффектов «за каждую сыгранную карту»). */
   playedThisTurn: string[]
   prompt: Prompt | null

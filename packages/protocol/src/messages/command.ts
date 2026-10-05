@@ -17,6 +17,7 @@ export const CommandSchema = v.variant('type', [
   v.object({ type: v.literal(COMMAND_TYPE.ATTACK_BASE), cardId }),
   v.object({ type: v.literal(COMMAND_TYPE.CHOOSE_OPTION), promptId, index: v.pipe(v.number(), v.integer(), v.minValue(0)) }),
   v.object({ type: v.literal(COMMAND_TYPE.CHOOSE_CARD), promptId, cardId }),
+  v.object({ type: v.literal(COMMAND_TYPE.CHOOSE_CARDS), promptId, cardIds: v.pipe(v.array(cardId), v.minLength(1), v.maxLength(20)) }),
   v.object({ type: v.literal(COMMAND_TYPE.SKIP), promptId }),
   v.object({ type: v.literal(COMMAND_TYPE.END_TURN) }),
   v.object({ type: v.literal(COMMAND_TYPE.CONCEDE) }),

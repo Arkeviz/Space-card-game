@@ -1,5 +1,5 @@
 import type { Card, Effect, Faction, Resource, ScrapZone } from '../types/index.ts'
-import { ABILITY_KIND, CARD_KIND, EFFECT_TYPE, FACTION, PASSIVE_TYPE, RESOURCE, SCRAP_ZONE } from '../types/index.ts'
+import { ABILITY_KIND, CARD_KIND, CARD_SET, EFFECT_TYPE, FACTION, PASSIVE_TYPE, RESOURCE, SCRAP_ZONE } from '../types/index.ts'
 
 const gain = (resource: Resource, amount: number): Effect => ({ type: EFFECT_TYPE.GAIN, resource, amount })
 const trade = (amount: number) => gain(RESOURCE.TRADE, amount)
@@ -22,7 +22,10 @@ const copyShip = (): Effect => ({ type: EFFECT_TYPE.COPY_SHIP })
  * Каталог карт базового набора. Значения записаны по памяти и НЕ сверены с физической игрой:
  * TODO сверить числа и тексты каждой карты с настоящими картами.
  */
-const cards: Card[] = [
+/** Описание карты в каталоге: набор по умолчанию - базовый. */
+type CardDefinition = Omit<Card, 'set'> & Partial<Pick<Card, 'set'>>
+
+const cards: CardDefinition[] = [
   // Стартовые карты и Исследователи
   { id: 'scout', name: 'Scout', faction: FACTION.NEUTRAL, kind: CARD_KIND.SHIP, cost: 0, abilities: { [ABILITY_KIND.BASIC]: [trade(1)] } },
   { id: 'viper', name: 'Viper', faction: FACTION.NEUTRAL, kind: CARD_KIND.SHIP, cost: 0, abilities: { [ABILITY_KIND.BASIC]: [combat(1)] } },
@@ -558,7 +561,7 @@ const cards: Card[] = [
   },
 ]
 
-export const CARDS: Readonly<Record<string, Card>> = Object.fromEntries(cards.map(card => [card.id, card]))
+export const CARDS: Readonly<Record<string, Card>> = Object.fromEntries(cards.map(card => [card.id, { set: CARD_SET.CORE, ...card }]))
 
 export function getCard(cardId: string): Card {
   const card = CARDS[cardId]

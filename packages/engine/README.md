@@ -66,17 +66,22 @@ type Command
 
 Каталог (`data/cards.ts`) - это 80 карт базового набора плюс стартовые карты и Исследователи; состав Торговой колоды - `TRADE_DECK_COMPOSITION` в `data/config.ts`. Значения записаны по памяти и не сверены с физической игрой (см. TODO в начале каталога).
 
-Эффект (`Effect`) либо выполняется сразу (`GAIN`, `DRAW`, `SHIP_TO_DECK_TOP`, `DRAW_IF_BASES`, `DRAW_PER_PLAYED`), либо открывает prompt и ждёт ответа игрока (остаток цепочки хранится в `state.continuation`):
+Эффект (`Effect`) либо выполняется сразу (`GAIN`, `DRAW`, `OPPONENT_DISCARD`, `SHIP_TO_DECK_TOP`, `DRAW_IF_BASES`, `DRAW_PER_PLAYED`), либо открывает prompt и ждёт ответа игрока (остаток цепочки хранится в `state.continuation`):
 
 | Эффект | Prompt | Ответ |
 | --- | --- | --- |
 | `CHOICE` | `CHOICE` | `CHOOSE_OPTION` |
 | `SCRAP` (`repeat`, `drawPerScrap`) | `SCRAP` | `CHOOSE_CARD` или `SKIP`, если необязательный; при `repeat` запрос повторяется |
-| `OPPONENT_DISCARD` | `DISCARD` у соперника | `CHOOSE_CARD` |
 | `DISCARD_DRAW` | `DISCARD` (`optional`, `remaining`, `drawPerDiscard`) | `CHOOSE_CARD` или `SKIP` |
 | `DESTROY_BASE` | `DESTROY_BASE` | `CHOOSE_CARD`, `SKIP` если `optional` |
 | `ACQUIRE_SHIP` | `ACQUIRE_SHIP` | `CHOOSE_CARD` (корабль ряда или верхний Исследователь) |
 | `COPY_SHIP` | `COPY_SHIP` | `CHOOSE_CARD` (другой корабль, сыгранный в этот ход) |
+
+**Сброс у соперника** (`OPPONENT_DISCARD`) не прерывает ход: эффект лишь записывает долг в `GameState.pendingDiscards` и шлёт событие `DISCARD_QUEUED`. В начале своего хода (`endTurn` предыдущего игрока, после `TURN_STARTED`) должник получает обязательный prompt `DISCARD` на столько карт, сколько накопилось (`remaining`, но не больше, чем карт в руке); если рука пуста, долг сгорает.
+
+Сброс нескольких карт можно закрыть одним ответом `CHOOSE_CARDS { promptId, cardIds }`: для обязательного запроса нужно ровно `min(remaining, карт в руке)` разных карт из руки, для необязательного - от одной до этого числа (с добором за каждую, если `drawPerDiscard`). Одиночный `CHOOSE_CARD` по-прежнему работает и повторяет запрос; `CHOOSE_CARDS` в `legalActions` не входит.
+
+**Способности союзника, не требующие выбора, срабатывают сами.** Способность `ALLY` автоматическая (`isAutomatic`), если среди её эффектов нет `SCRAP`, `CHOICE`, `DESTROY_BASE`, `ACQUIRE_SHIP`, `DISCARD_DRAW`, `COPY_SHIP`. `triggerAllies` запускает такие способности у всех карт игрока на столе, у которых условие союзника выполнено и способность ещё не использована: при розыгрыше карты (и для неё самой, и для тех, кому она стала союзником), при копировании корабля (меняется фракция) и в начале хода игрока (для баз с прошлых ходов). Событие то же, `ABILITY_ACTIVATED`, флаг `used` ставится сразу, так что `ACTIVATE` для такой способности недоступна. Способности союзника с выбором, основные способности баз и утилизация остаются ручными (`ACTIVATE`).
 
 Постоянные свойства (`Card.passives`) не активируются: `ALL_FACTIONS` (Mech World считается союзником всех фракций) и `SHIP_COMBAT_BONUS` (Fleet HQ: каждый корабль, сыгранный после него, даёт +1 атаки; уже сыгранные корабли бонус не получают).
 

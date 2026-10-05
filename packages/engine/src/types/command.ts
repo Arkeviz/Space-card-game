@@ -11,6 +11,7 @@ export type Command
     | { type: typeof COMMAND_TYPE.ATTACK_BASE, cardId: string }
     | { type: typeof COMMAND_TYPE.CHOOSE_OPTION, promptId: number, index: number }
     | { type: typeof COMMAND_TYPE.CHOOSE_CARD, promptId: number, cardId: string }
+    | { type: typeof COMMAND_TYPE.CHOOSE_CARDS, promptId: number, cardIds: string[] }
     | { type: typeof COMMAND_TYPE.SKIP, promptId: number }
     | { type: typeof COMMAND_TYPE.END_TURN }
     | { type: typeof COMMAND_TYPE.CONCEDE }

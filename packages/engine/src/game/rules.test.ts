@@ -153,21 +153,22 @@ describe('розыгрыш и покупка', () => {
 })
 
 describe('способности', () => {
-  it('союзник: нужна другая карта той же фракции, использовать можно один раз', () => {
+  it('союзник: простая способность срабатывает сама, когда появляется другая карта той же фракции, и только один раз', () => {
     const state = newGame()
     const [first, second] = setHand(state, 0, ['blob-fighter', 'blob-fighter', 'scout'])
     let result = run(state, 0, { type: COMMAND_TYPE.PLAY_CARD, cardId: first.id })
     expect(result.state.pools[RESOURCE.COMBAT]).toBe(3)
+    expect(result.state.players[0].hand).toHaveLength(2)
     expect(errorOf(result.state, 0, { type: COMMAND_TYPE.ACTIVATE, cardId: first.id, ability: ABILITY_KIND.ALLY })).toBe(COMMAND_ERROR.ABILITY_UNAVAILABLE)
 
+    // Вторая карта слизней: добор срабатывает и у неё самой, и у первой.
     result = run(result.state, 0, { type: COMMAND_TYPE.PLAY_CARD, cardId: second.id })
-    const handBefore = result.state.players[0].hand.length
-    result = run(result.state, 0, { type: COMMAND_TYPE.ACTIVATE, cardId: first.id, ability: ABILITY_KIND.ALLY })
-    expect(result.state.players[0].hand).toHaveLength(handBefore + 1)
+    expect(result.state.players[0].hand).toHaveLength(1 + 2)
+    const allyEvents = result.events.filter(event => event.type === EVENT_TYPE.ABILITY_ACTIVATED)
+    expect(allyEvents.map(event => event.cardId).sort()).toEqual([first.id, second.id].sort())
     expect(errorOf(result.state, 0, { type: COMMAND_TYPE.ACTIVATE, cardId: first.id, ability: ABILITY_KIND.ALLY })).toBe(COMMAND_ERROR.ABILITY_USED)
-    // способность второй карты независима
-    const secondAlly = run(result.state, 0, { type: COMMAND_TYPE.ACTIVATE, cardId: second.id, ability: ABILITY_KIND.ALLY })
-    expect(secondAlly.state.players[0].hand).toHaveLength(handBefore + 2)
+    expect(errorOf(result.state, 0, { type: COMMAND_TYPE.ACTIVATE, cardId: second.id, ability: ABILITY_KIND.ALLY })).toBe(COMMAND_ERROR.ABILITY_USED)
+    expect(legalActions(result.state, 0).some(action => action.type === COMMAND_TYPE.ACTIVATE)).toBe(false)
   })
 
   it('нейтральная карта не даёт союзника', () => {
@@ -183,8 +184,8 @@ describe('способности', () => {
     setInPlay(state, 0, ['blob-wheel'])
     const [fighter] = setHand(state, 0, ['blob-fighter'])
     const result = run(state, 0, { type: COMMAND_TYPE.PLAY_CARD, cardId: fighter.id })
-    const withAlly = run(result.state, 0, { type: COMMAND_TYPE.ACTIVATE, cardId: fighter.id, ability: ABILITY_KIND.ALLY })
-    expect(withAlly.state.players[0].hand).toHaveLength(result.state.players[0].hand.length + 1)
+    expect(result.state.players[0].hand).toHaveLength(1)
+    expect(result.events).toContainEqual({ type: EVENT_TYPE.ABILITY_ACTIVATED, player: 0, cardId: fighter.id, ability: ABILITY_KIND.ALLY })
   })
 
   it('утилизация: карта уходит в свалку, эффект срабатывает', () => {
@@ -213,15 +214,24 @@ describe('способности', () => {
     expect(errorOf(result.state, 0, { type: COMMAND_TYPE.ACTIVATE, cardId: post.id, ability: ABILITY_KIND.BASIC })).toBe(COMMAND_ERROR.ABILITY_USED)
   })
 
-  it('сброс у соперника: выбирает соперник, эффекты хода ждут', () => {
+  it('сброс у соперника откладывается на начало его хода: ход текущего игрока не прерывается', () => {
     const state = newGame()
     const [fighter] = setHand(state, 0, ['imperial-fighter'])
     const [a, b] = setHand(state, 1, ['scout', 'viper'])
     let result = run(state, 0, { type: COMMAND_TYPE.PLAY_CARD, cardId: fighter.id })
+    expect(result.state.prompt).toBeNull()
+    expect(result.state.pools[RESOURCE.COMBAT]).toBe(2)
+    expect(result.state.pendingDiscards).toEqual([0, 1])
+    expect(result.events).toContainEqual({ type: EVENT_TYPE.DISCARD_QUEUED, player: 1, amount: 1 })
+
+    // В начале своего хода соперник выбирает карту: запрос открывается сразу после TURN_STARTED.
+    result = run(result.state, 0, { type: COMMAND_TYPE.END_TURN })
+    const types = result.events.map(event => event.type)
+    expect(types.indexOf(EVENT_TYPE.PROMPT_OPENED)).toBeGreaterThan(types.indexOf(EVENT_TYPE.TURN_STARTED))
     const prompt = result.state.prompt!
     expect(prompt).toMatchObject({ kind: PROMPT_KIND.DISCARD, player: 1 })
-    expect(result.state.pools[RESOURCE.COMBAT]).toBe(2)
-    expect(errorOf(result.state, 0, { type: COMMAND_TYPE.END_TURN })).toBe(COMMAND_ERROR.PROMPT_PENDING)
+    expect(result.state.pendingDiscards).toEqual([0, 0])
+    expect(errorOf(result.state, 1, { type: COMMAND_TYPE.END_TURN })).toBe(COMMAND_ERROR.PROMPT_PENDING)
     expect(errorOf(result.state, 0, { type: COMMAND_TYPE.CHOOSE_CARD, promptId: prompt.id, cardId: a.id })).toBe(COMMAND_ERROR.NOT_YOUR_TURN)
     expect(errorOf(result.state, 1, { type: COMMAND_TYPE.CHOOSE_CARD, promptId: prompt.id, cardId: 'чужая' })).toBe(COMMAND_ERROR.INVALID_CHOICE)
 
@@ -231,13 +241,91 @@ describe('способности', () => {
     expect(result.state.players[1].discard).toContainEqual(b)
   })
 
-  it('сброс у соперника без карт в руке пропускается', () => {
+  it('несколько сбросов за ход складываются в один запрос на несколько карт', () => {
+    const state = newGame()
+    const [first, second] = setHand(state, 0, ['imperial-fighter', 'imperial-fighter'])
+    const [a, b, c] = setHand(state, 1, ['scout', 'viper', 'scout'])
+    let result = run(state, 0, { type: COMMAND_TYPE.PLAY_CARD, cardId: first.id })
+    result = run(result.state, 0, { type: COMMAND_TYPE.PLAY_CARD, cardId: second.id })
+    expect(result.state.pendingDiscards).toEqual([0, 2])
+
+    result = run(result.state, 0, { type: COMMAND_TYPE.END_TURN })
+    expect(result.state.prompt).toMatchObject({ kind: PROMPT_KIND.DISCARD, player: 1, remaining: 2 })
+    result = run(result.state, 1, { type: COMMAND_TYPE.CHOOSE_CARD, promptId: result.state.prompt!.id, cardId: a.id })
+    expect(result.state.prompt).toMatchObject({ kind: PROMPT_KIND.DISCARD, player: 1, remaining: 1 })
+    result = run(result.state, 1, { type: COMMAND_TYPE.CHOOSE_CARD, promptId: result.state.prompt!.id, cardId: b.id })
+    expect(result.state.prompt).toBeNull()
+    expect(result.state.players[1].hand).toEqual([c])
+  })
+
+  it('несколько сбросов можно закрыть одним ответом CHOOSE_CARDS', () => {
+    const state = newGame()
+    const [first, second] = setHand(state, 0, ['imperial-fighter', 'imperial-fighter'])
+    const [a, b, c] = setHand(state, 1, ['scout', 'viper', 'scout'])
+    let result = run(state, 0, { type: COMMAND_TYPE.PLAY_CARD, cardId: first.id })
+    result = run(result.state, 0, { type: COMMAND_TYPE.PLAY_CARD, cardId: second.id })
+    result = run(result.state, 0, { type: COMMAND_TYPE.END_TURN })
+    const promptId = result.state.prompt!.id
+
+    // Нужно ровно столько карт, сколько велено, без повторов и чужих карт.
+    expect(errorOf(result.state, 1, { type: COMMAND_TYPE.CHOOSE_CARDS, promptId, cardIds: [a.id] })).toBe(COMMAND_ERROR.INVALID_CHOICE)
+    expect(errorOf(result.state, 1, { type: COMMAND_TYPE.CHOOSE_CARDS, promptId, cardIds: [a.id, a.id] })).toBe(COMMAND_ERROR.INVALID_CHOICE)
+    expect(errorOf(result.state, 1, { type: COMMAND_TYPE.CHOOSE_CARDS, promptId, cardIds: [a.id, 'чужая'] })).toBe(COMMAND_ERROR.INVALID_CHOICE)
+    expect(errorOf(result.state, 0, { type: COMMAND_TYPE.CHOOSE_CARDS, promptId, cardIds: [a.id, b.id] })).toBe(COMMAND_ERROR.NOT_YOUR_TURN)
+
+    result = run(result.state, 1, { type: COMMAND_TYPE.CHOOSE_CARDS, promptId, cardIds: [a.id, c.id] })
+    expect(result.state.prompt).toBeNull()
+    expect(result.state.players[1].hand).toEqual([b])
+    expect(result.events.filter(event => event.type === EVENT_TYPE.CARD_DISCARDED)).toHaveLength(2)
+  })
+
+  it('необязательный сброс с добором: CHOOSE_CARDS берёт карту за каждую сброшенную', () => {
+    const state = newGame()
+    const [station] = setInPlay(state, 0, ['recycling-station'])
+    const hand = setHand(state, 0, ['scout', 'viper', 'scout'])
+    state.players[0].deck = [inst('cutter'), inst('cutter'), inst('cutter')]
+    let result = run(state, 0, { type: COMMAND_TYPE.ACTIVATE, cardId: station.id, ability: ABILITY_KIND.BASIC })
+    result = run(result.state, 0, { type: COMMAND_TYPE.CHOOSE_OPTION, promptId: result.state.prompt!.id, index: 1 })
+    const promptId = result.state.prompt!.id
+    expect(errorOf(result.state, 0, { type: COMMAND_TYPE.CHOOSE_CARDS, promptId, cardIds: [hand[0].id, hand[1].id, hand[2].id] })).toBe(COMMAND_ERROR.INVALID_CHOICE)
+
+    result = run(result.state, 0, { type: COMMAND_TYPE.CHOOSE_CARDS, promptId, cardIds: [hand[0].id, hand[1].id] })
+    expect(result.state.prompt).toBeNull()
+    expect(result.state.players[0].discard).toHaveLength(2)
+    expect(result.state.players[0].hand).toHaveLength(3)
+  })
+
+  it('cHOOSE_CARDS не подходит к запросам, кроме сброса', () => {
+    const state = newGame()
+    const [bot] = setHand(state, 0, ['trade-bot'])
+    state.players[0].discard = [inst('scout')]
+    const played = run(state, 0, { type: COMMAND_TYPE.PLAY_CARD, cardId: bot.id })
+    expect(errorOf(played.state, 0, { type: COMMAND_TYPE.CHOOSE_CARDS, promptId: played.state.prompt!.id, cardIds: ['x'] })).toBe(COMMAND_ERROR.INVALID_CHOICE)
+  })
+
+  it('сброс у соперника без карт в руке сгорает', () => {
     const state = newGame()
     const [fighter] = setHand(state, 0, ['imperial-fighter'])
     setHand(state, 1, [])
-    const result = run(state, 0, { type: COMMAND_TYPE.PLAY_CARD, cardId: fighter.id })
+    state.players[1].deck = []
+    state.players[1].discard = []
+    let result = run(state, 0, { type: COMMAND_TYPE.PLAY_CARD, cardId: fighter.id })
     expect(result.state.prompt).toBeNull()
     expect(result.state.pools[RESOURCE.COMBAT]).toBe(2)
+    result = run(result.state, 0, { type: COMMAND_TYPE.END_TURN })
+    expect(result.state.prompt).toBeNull()
+    expect(result.state.pendingDiscards).toEqual([0, 0])
+  })
+
+  it('база с прошлых ходов запускает простую способность союзника в начале хода', () => {
+    const state = newGame()
+    // Две базы одной фракции на столе игрока 1: их способности союзника срабатывают на старте его хода.
+    const [first] = setInPlay(state, 1, ['space-station', 'space-station'])
+    const result = run(state, 0, { type: COMMAND_TYPE.END_TURN })
+    const types = result.events.map(event => event.type)
+    expect(types.indexOf(EVENT_TYPE.ABILITY_ACTIVATED)).toBeGreaterThan(types.indexOf(EVENT_TYPE.TURN_STARTED))
+    expect(result.state.pools[RESOURCE.COMBAT]).toBe(4)
+    expect(result.state.players[1].inPlay.find(entry => entry.card.id === first.id)?.used[ABILITY_KIND.ALLY]).toBe(true)
   })
 
   it('необязательная утилизация из руки/сброса: можно выбрать карту или пропустить', () => {
@@ -403,7 +491,7 @@ describe('сдача (CONCEDE)', () => {
     const state = newGame()
     const [fighter] = setHand(state, 0, ['imperial-fighter'])
     setHand(state, 1, ['scout'])
-    const played = run(state, 0, { type: COMMAND_TYPE.PLAY_CARD, cardId: fighter.id })
+    const played = run(run(state, 0, { type: COMMAND_TYPE.PLAY_CARD, cardId: fighter.id }).state, 0, { type: COMMAND_TYPE.END_TURN })
     expect(played.state.prompt).toMatchObject({ kind: PROMPT_KIND.DISCARD, player: 1 })
 
     const result = run(played.state, 0, { type: COMMAND_TYPE.CONCEDE })

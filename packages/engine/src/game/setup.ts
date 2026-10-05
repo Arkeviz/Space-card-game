@@ -60,6 +60,7 @@ export function createGame(seed: number, options: CreateGameOptions = {}): GameS
     explorers,
     scrapHeap: [],
     nextShipToDeckTop: false,
+    pendingDiscards: [0, 0],
     playedThisTurn: [],
     prompt: null,
     continuation: [],

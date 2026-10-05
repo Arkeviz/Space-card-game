@@ -53,7 +53,9 @@ describe('legalActions', () => {
     const state = newGame()
     const [fighter] = setHand(state, 0, ['imperial-fighter'])
     const [a, b] = setHand(state, 1, ['scout', 'viper'])
-    const { state: waiting } = run(state, 0, { type: COMMAND_TYPE.PLAY_CARD, cardId: fighter.id })
+    const played = run(state, 0, { type: COMMAND_TYPE.PLAY_CARD, cardId: fighter.id })
+    // Соперник сбрасывает карту в начале своего хода: запрос открывается у него, пока ход ещё не сделан.
+    const { state: waiting } = run(played.state, 0, { type: COMMAND_TYPE.END_TURN })
     const promptId = waiting.prompt!.id
 
     expect(legalActions(waiting, 0)).toEqual([])
