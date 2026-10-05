@@ -3,7 +3,7 @@ import type { CardNode } from '../lib/nodes'
 import { computed } from 'vue'
 import AppIcon from '@/common/ui/AppIcon.vue'
 import { ICON } from '@/common/ui/icons'
-import { CARD_FORM, CARD_SIZE, cardName, CardView } from '@/modules/cards'
+import { ABILITY_STATUS, CARD_FORM, CARD_SIZE, cardName, CardView } from '@/modules/cards'
 
 /*
  * Одна карта на столе: невидимая кнопка сверху (клик, фокус, подпись для скринридера), под ней двусторонняя
@@ -19,11 +19,18 @@ const emit = defineEmits<{
 
 const size = computed(() => (props.node.form === CARD_FORM.DEPLOYED ? CARD_SIZE.DEPLOYED : CARD_SIZE.CARD))
 const style = computed(() => ({ width: `${size.value.w}px`, height: `${size.value.h}px` }))
+/** Эффект карты или базы можно активировать прямо сейчас: вокруг неё идёт пульсация. */
+const activatable = computed(() => props.node.click !== null && (props.node.basic === ABILITY_STATUS.READY || props.node.ally === ABILITY_STATUS.READY))
 const scrapLabel = computed(() => (props.node.cardId ? `Утилизировать «${cardName(props.node.cardId)}»` : ''))
 </script>
 
 <template>
   <div class="node" :class="{ 'node--hidden': !node.cardId }" :data-key="node.key" :style="style">
+    <!-- Две волны со сдвигом лежат под картой: видна только та часть, что расходится за её контур. -->
+    <template v-if="activatable">
+      <span class="node__pulse" aria-hidden="true" />
+      <span class="node__pulse node__pulse--late" aria-hidden="true" />
+    </template>
     <div class="node__flip" data-flip>
       <div class="node__face node__face--back">
         <CardView :form="CARD_FORM.BACK" />
@@ -93,6 +100,56 @@ const scrapLabel = computed(() => (props.node.cardId ? `Утилизироват
   inset: 0;
 }
 
+.node__pulse {
+  position: absolute;
+  inset: 0;
+  background: rgba(79, 216, 255, 0.55);
+  clip-path: polygon(16px 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%, 0 16px);
+  animation: node-pulse 1.8s ease-out infinite;
+  pointer-events: none;
+}
+
+.node__pulse--late {
+  animation-delay: 0.9s;
+}
+
+@keyframes node-pulse {
+  from {
+    opacity: 0.8;
+    transform: scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: scale(1.16);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .node__pulse {
+    animation: none;
+    opacity: 0.35;
+    transform: scale(1.04);
+  }
+
+  .node__pulse--late {
+    display: none;
+  }
+}
+
+/* Копии для эффекта расщепления (CardLayer): вспышка по контуру и осколки, обрезанные по клеткам. */
+.node--flash {
+  background: radial-gradient(circle at 50% 50%, rgba(255, 236, 200, 0.95) 0%, rgba(255, 150, 80, 0.7) 60%, rgba(255, 90, 79, 0.5) 100%);
+  clip-path: polygon(16px 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%, 0 16px);
+  pointer-events: none;
+}
+
+.node--shard {
+  /* filter срабатывает до обрезки, поэтому тень осколку не нарисовать: вместо неё осколок раскаляется. */
+  filter: brightness(1.7) sepia(0.55) saturate(2.4);
+  pointer-events: none;
+}
+
 .node__face {
   position: absolute;
   inset: 0;
@@ -147,9 +204,13 @@ const scrapLabel = computed(() => (props.node.cardId ? `Утилизироват
   cursor: default;
 }
 
+/*
+ * Кнопка утилизации слева внизу: в ряду кораблей и баз соседние карты наползают друг на друга справа налево,
+ * и правый нижний угол ближайшей карты перекрыт, а левый край виден всегда.
+ */
 .node__scrap {
   position: absolute;
-  right: 6px;
+  left: 6px;
   bottom: 6px;
   display: flex;
   align-items: center;

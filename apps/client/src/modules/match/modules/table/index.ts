@@ -1,4 +1,5 @@
 export { buildTable } from './build'
+export { discardLimit } from './discard'
 export { indexLegalActions } from './legal-index'
 export type { LegalIndex } from './legal-index'
 export { cardOpensPrompt, nextCardToPlay } from './play-all'

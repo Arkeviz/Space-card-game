@@ -2,7 +2,7 @@ import type { GameEvent } from '@space/engine'
 import { createGame, EVENT_TYPE, redact } from '@space/engine'
 import { describe, expect, it } from 'vitest'
 import { buildTable } from '../../table'
-import { layoutOf, opponentDeckPose, selfDeckPose, tradeDeckPose } from './layout'
+import { layoutOf, opponentDeckPose, opponentDiscardPose, selfDeckPose, selfDiscardPose, tradeDeckPose } from './layout'
 import { motionFor } from './motion'
 import { NODE_KEY } from './nodes'
 
@@ -40,6 +40,15 @@ describe('motionFor', () => {
   it('новая карта торгового ряда вылетает из колоды рынка', () => {
     const motion = motionFor([{ type: EVENT_TYPE.TRADE_ROW_REFILLED, slot: 2, card: card('r') }], table)
     expect(motion.spawn.get('r')?.from).toEqual(tradeDeckPose(layoutOf(table).trade))
+  })
+
+  it('утилизация карты из глубины сброса: карта достаётся из стопки на месте, а из руки соперника - выходит из веера', () => {
+    const own = motionFor([{ type: EVENT_TYPE.CARD_SCRAPPED, player: 0, card: card('x'), from: 'discard' }], table)
+    expect(own.spawn.get('x')).toEqual({ from: selfDiscardPose(), faceDown: false })
+    const theirs = motionFor([{ type: EVENT_TYPE.CARD_SCRAPPED, player: 1, card: card('y'), from: 'discard' }], table)
+    expect(theirs.spawn.get('y')).toEqual({ from: opponentDiscardPose(), faceDown: false })
+    const fromHand = motionFor([{ type: EVENT_TYPE.CARD_SCRAPPED, player: 1, card: card('z'), from: 'hand' }], table)
+    expect(fromHand.spawn.get('z')?.faceDown).toBe(true)
   })
 
   it('перемешивание: верхние карты сброса улетают в колоду', () => {

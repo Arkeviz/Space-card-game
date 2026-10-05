@@ -7,8 +7,10 @@ import {
   explorersPose,
   layoutOf,
   opponentDeckPose,
+  opponentDiscardPose,
   opponentHandOrigin,
   selfDeckPose,
+  selfDiscardPose,
   tradeDeckPose,
 } from './layout'
 import { NODE_KEY } from './nodes'
@@ -88,10 +90,15 @@ export function motionFor(events: readonly GameEvent[], before: TableState): Mot
         discarded += 1
         break
 
-      case EVENT_TYPE.CARD_SCRAPPED:
-        if (sideOf(before, event.player) === SIDE.OPPONENT && event.from === 'hand')
+      case EVENT_TYPE.CARD_SCRAPPED: {
+        const mine = sideOf(before, event.player) === SIDE.SELF
+        if (!mine && event.from === 'hand')
           motion.spawn.set(event.card.id, { from: opponentHandOrigin(), faceDown: true })
+        // Карта из глубины сброса на столе не нарисована: она «достаётся» из стопки и распадается на месте.
+        else if (event.from === 'discard')
+          motion.spawn.set(event.card.id, { from: mine ? selfDiscardPose() : opponentDiscardPose(), faceDown: false })
         break
+      }
 
       case EVENT_TYPE.CARD_BOUGHT:
         if (event.from === 'explorers')

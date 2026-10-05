@@ -37,8 +37,8 @@ const props = defineProps<{
   legal: LegalIndex
   /** Принимается ли сейчас ввод (очередь анимаций пуста и нет ожидающей команды). */
   interactive: boolean
-  /** Карта, выбранная в prompt сброса. */
-  selectedCardId: string | null
+  /** Карты, выбранные в prompt сброса. */
+  selectedCardIds: readonly string[]
   speed: number
 }>()
 
@@ -55,7 +55,7 @@ const nodes = computed(() => buildNodes(props.table, {
   legal: props.legal,
   interactive: props.interactive,
   hoverKey: hoverKey.value,
-  selectedCardId: props.selectedCardId,
+  selectedCardIds: props.selectedCardIds,
 }))
 
 const layout = computed(() => layoutOf(props.table))
@@ -88,7 +88,7 @@ const captions = computed(() => props.table.tradeRow.map((card) => {
 
 /**
  * Крупный просмотр карты, на которую наведён курсор: на поле и в ряду карты мелкие, текст способностей не
- * прочитать. Карты руки и так крупные, стопки и свалка - просто картинки без наведения.
+ * прочитать. Карты руки и так крупные, стопки и утиль - просто картинки без наведения.
  */
 const preview = computed(() => {
   const node = nodes.value.find(item => item.key === hoverKey.value)
@@ -132,13 +132,13 @@ defineExpose({
       class="board__trade-band"
       :style="{ top: `${trade.rect.y}px`, height: `${trade.rect.h}px` }"
     />
-    <div class="board__vlabel" :style="{ left: `${trade.labelX}px`, top: `${trade.rect.y}px`, height: `${trade.rect.h}px` }">
+    <p class="board__vlabel" :style="{ left: `${trade.labelX}px`, top: `${trade.rect.y}px`, height: `${trade.rect.h}px` }">
       ТОРГОВЫЙ РЯД
-    </div>
+    </p>
     <div class="board__vline" :style="{ left: `${trade.dividerLeftX}px`, top: `${trade.dividerTop}px`, height: `${trade.dividerH}px` }" />
     <div class="board__vline" :style="{ left: `${trade.dividerRightX}px`, top: `${trade.dividerTop}px`, height: `${trade.dividerH}px` }" />
 
-    <div
+    <p
       v-for="(caption, slot) in captions"
       :key="slot"
       class="board__caption"
@@ -146,7 +146,7 @@ defineExpose({
       :style="{ left: `${tradeSlotX(trade, slot) - TRADE_SLOT_W / 2}px`, top: `${trade.captionY - 8}px`, width: `${TRADE_SLOT_W}px` }"
     >
       {{ caption.text }}
-    </div>
+    </p>
 
     <PileStack
       v-if="table.explorersCount > 0"
@@ -172,11 +172,11 @@ defineExpose({
       type="button"
       class="board__scrap-button"
       :style="{ left: `${trade.scrap.x - trade.scrap.w / 2}px`, top: `${trade.scrap.y - trade.scrap.h / 2}px`, width: `${trade.scrap.w}px`, height: `${trade.scrap.h}px` }"
-      :aria-label="`Свалка: ${table.scrapHeap.length}`"
+      :aria-label="`Утиль: ${table.scrapHeap.length}`"
       @click="emit('viewPile', PILE_ID.SCRAP_HEAP)"
     >
       <AppIcon :name="ICON.SCRAP" :size="15" :stroke="1.8" />
-      <span>СВАЛКА · {{ table.scrapHeap.length }}</span>
+      <span>Утиль · {{ table.scrapHeap.length }}</span>
     </button>
 
     <!-- Поля игроков -->
@@ -274,9 +274,9 @@ defineExpose({
 .board__vlabel {
   display: flex;
   align-items: center;
-  width: 12px;
+  width: 14px;
   color: #6fb9d6;
-  font: 600 10px/1 var(--font-mono);
+  font: 600 12px/1 var(--font-mono);
   letter-spacing: 0.22em;
   white-space: nowrap;
   writing-mode: vertical-rl;
@@ -293,7 +293,7 @@ defineExpose({
 .board__caption {
   height: 16px;
   color: #6f84ad;
-  font: 600 11px/16px var(--font-mono);
+  font: 600 13px/16px var(--font-mono);
   letter-spacing: 0.16em;
   text-align: center;
   transition: top 0.55s;
@@ -312,7 +312,7 @@ defineExpose({
   border: 0;
   background: rgba(201, 214, 240, 0.06);
   color: var(--c-text-quiet);
-  font: 600 10px/1 var(--font-mono);
+  font: 600 12px/1 var(--font-mono);
   letter-spacing: 0.14em;
   box-shadow: inset 0 0 0 1px rgba(201, 214, 240, 0.25);
   cursor: pointer;
@@ -341,9 +341,9 @@ defineExpose({
   bottom: 0;
   display: flex;
   align-items: center;
-  width: 12px;
+  width: 14px;
   color: var(--c-dim);
-  font: 600 10px/1 var(--font-mono);
+  font: 600 12px/1 var(--font-mono);
   letter-spacing: 0.22em;
   white-space: nowrap;
   writing-mode: vertical-rl;

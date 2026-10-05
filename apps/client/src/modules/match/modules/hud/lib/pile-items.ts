@@ -10,7 +10,7 @@ export interface PileViewerItem {
   count: number
 }
 
-/** Сброс и свалка: каждая карта отдельно, сверху то, что легло последним. */
+/** Сброс и утиль: каждая карта отдельно, сверху то, что легло последним. */
 export function itemsFromCards(cards: readonly CardInstance[]): PileViewerItem[] {
   return [...cards].reverse().map(card => ({ key: card.id, cardId: card.cardId, count: 1 }))
 }

@@ -1,11 +1,10 @@
 import type { CardInstance, Effect } from '@space/engine'
 import { ABILITY_KIND, CARD_KIND, EFFECT_TYPE, getCard } from '@space/engine'
 
-/** Эффекты, после которых игре нужен чей-то выбор: ответ даёт игрок (утилизация, вариант) или соперник (сброс). */
+/** Эффекты, после которых игре нужен выбор игрока (утилизация, вариант и т. п.). Сброс у соперника сюда не входит: он откладывается на начало хода соперника. */
 const PROMPT_EFFECTS = new Set<Effect['type']>([
   EFFECT_TYPE.SCRAP,
   EFFECT_TYPE.CHOICE,
-  EFFECT_TYPE.OPPONENT_DISCARD,
   EFFECT_TYPE.DESTROY_BASE,
   EFFECT_TYPE.ACQUIRE_SHIP,
   EFFECT_TYPE.DISCARD_DRAW,

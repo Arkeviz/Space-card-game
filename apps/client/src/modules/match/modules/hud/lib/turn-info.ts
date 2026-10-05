@@ -19,15 +19,17 @@ export function turnInfo(table: TableState): TurnInfo {
     return {
       mine,
       title: 'ВАШ ХОД',
-      sub: prompt && !waitingForMe ? 'Соперник выбирает карту для сброса' : null,
+      sub: prompt && !waitingForMe ? 'Соперник делает выбор' : null,
     }
   }
+  // Обязательный сброс по эффекту открывается в начале хода того, кто сбрасывает: у соперника он тоже идёт «в его ход».
+  const discarding = prompt?.kind === PROMPT_KIND.DISCARD
   return {
     mine,
     title: 'ХОД СОПЕРНИКА',
     sub: waitingForMe
-      ? (prompt.kind === PROMPT_KIND.DISCARD ? 'Соперник ждёт, пока вы сбросите карту' : 'Соперник ждёт вашего выбора')
-      : 'Соперник разыгрывает карты',
+      ? (discarding ? 'Соперник ждёт, пока вы сбросите карту' : 'Соперник ждёт вашего выбора')
+      : (prompt ? 'Соперник выбирает карту для сброса' : 'Соперник разыгрывает карты'),
   }
 }
 
@@ -51,7 +53,7 @@ export function hintFor(table: TableState, legal: LegalIndex): Hint {
     if (outpost)
       return { icon: ICON.LOCK, color: 'var(--c-text-quiet)', text: `Аванпост «${outpost}» прикрывает соперника и его базы: сначала атакуйте его` }
     if (legal.attackPlayerAmount > 0)
-      return { icon: ICON.COMBAT, color: 'var(--c-combat)', text: `Нажмите на панель соперника, чтобы атаковать: ${legal.attackPlayerAmount}` }
+      return { icon: ICON.COMBAT, color: 'var(--c-combat)', text: `Нажмите на аватар соперника или кнопку «Атаковать»: ${legal.attackPlayerAmount}` }
     return { icon: ICON.INFO, color: 'var(--c-muted)', text: 'Разыгрывайте карты из руки и покупайте новые на рынке за торговлю' }
   }
   const own = outpostName(table, SIDE.SELF)

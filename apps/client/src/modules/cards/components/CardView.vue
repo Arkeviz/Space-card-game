@@ -104,13 +104,13 @@ const kindLabel = computed(() => (card.value ? KIND_LABEL[card.value.kind] : '')
           <div v-if="card.cost > 0" class="card__cost" :class="{ 'card__cost--short': costUnaffordable }">
             {{ card.cost }}
           </div>
-          <div class="card__kind">
+          <p class="card__kind">
             {{ kindLabel }}
-          </div>
+          </p>
         </template>
-        <div v-else class="card__tag" :class="{ 'card__tag--outpost': isOutpost }">
+        <p v-else class="card__tag" :class="{ 'card__tag--outpost': isOutpost }">
           {{ kindLabel }}
-        </div>
+        </p>
         <div v-if="isDeployed" class="card__spacer" />
         <div v-if="card.defense" class="card__defense" :class="{ 'card__defense--outpost': isOutpost }">
           <AppIcon :name="ICON.SHIELD" :size="isDeployed ? 18 : 15" :stroke="1.8" />
@@ -120,19 +120,19 @@ const kindLabel = computed(() => (card.value ? KIND_LABEL[card.value.kind] : '')
       </div>
 
       <div class="card__title">
-        <div class="card__name">
+        <p class="card__name">
           {{ cardName(card.id) }}
-        </div>
-        <div class="card__faction">
+        </p>
+        <p class="card__faction">
           {{ faction.label }}
-        </div>
+        </p>
       </div>
 
       <div class="card__art">
         <AppIcon :name="card.kind === CARD_KIND.SHIP ? ICON.SHIP : ICON.STATION" :size="isDeployed ? 26 : 38" :stroke="1.2" class="card__art-glyph" />
-        <div class="card__art-caption">
+        <p class="card__art-caption">
           {{ copyOf ? `КОПИЯ · ${cardName(copyOf)}` : 'ИЗОБРАЖЕНИЕ' }}
-        </div>
+        </p>
       </div>
 
       <div class="card__rows">
@@ -182,9 +182,9 @@ const kindLabel = computed(() => (card.value ? KIND_LABEL[card.value.kind] : '')
           <AppIcon v-if="row.status === ABILITY_STATUS.READY" :name="ICON.ARROW" :size="13" :stroke="2.6" label="Можно активировать" class="card__row-mark card__row-mark--ready" />
         </div>
         <div v-for="text in passives" :key="text" class="card__row card__row--passive">
-          <div class="card__text card__text--below">
+          <p class="card__text card__text--below">
             {{ text }}
-          </div>
+          </p>
         </div>
       </div>
     </div>
@@ -192,14 +192,14 @@ const kindLabel = computed(() => (card.value ? KIND_LABEL[card.value.kind] : '')
     <!-- Статусные метки -->
     <div v-if="state === CARD_STATE.LOCKED" class="card__locked">
       <AppIcon :name="ICON.SHIELD" :size="38" :stroke="1.5" />
-      <div class="card__badge-text">
+      <p class="card__badge-text">
         ЗА АВАНПОСТОМ
-      </div>
+      </p>
     </div>
-    <div v-if="state === CARD_STATE.TARGET" class="card__target">
+    <p v-if="state === CARD_STATE.TARGET" class="card__target">
       <AppIcon :name="ICON.COMBAT" :size="14" :stroke="2.4" />
       <span>ЦЕЛЬ</span>
-    </div>
+    </p>
     <div v-if="state === CARD_STATE.SELECTED" class="card__selected">
       <AppIcon :name="ICON.CHECK" :size="18" :stroke="2.8" />
     </div>
@@ -382,7 +382,8 @@ const kindLabel = computed(() => (card.value ? KIND_LABEL[card.value.kind] : '')
   flex: 1 1 0;
   align-items: center;
   justify-content: center;
-  min-height: 60px;
+  /* Картинка уступает место тексту: у карт с тремя способностями она сжимается, но не исчезает. */
+  min-height: 28px;
   margin: 0 -9px;
   background: repeating-linear-gradient(135deg, rgba(var(--f-rgb), 0.11) 0 7px, rgba(var(--f-rgb), 0.03) 7px 14px);
   border-top: 1px solid rgba(var(--f-rgb), 0.35);
@@ -426,17 +427,12 @@ const kindLabel = computed(() => (card.value ? KIND_LABEL[card.value.kind] : '')
   align-items: center;
   justify-content: center;
   min-height: 30px;
-  padding: 3px 14px;
+  padding: 3px 12px;
   border-top: 1px solid rgba(230, 238, 255, 0.08);
 }
 
 .card__row--first {
   border-top-color: transparent;
-}
-
-.card__row--ready {
-  background: rgba(79, 216, 255, 0.1);
-  box-shadow: inset 0 0 0 1px rgba(79, 216, 255, 0.75);
 }
 
 .card__row-content {
@@ -502,7 +498,8 @@ const kindLabel = computed(() => (card.value ? KIND_LABEL[card.value.kind] : '')
 .card__text {
   min-width: 0;
   color: var(--c-text-quiet);
-  font: 500 11px/13px var(--font-text);
+  /* Exo 2 шире прежнего шрифта: 10.5px, чтобы строки способностей умещались так же, как раньше. */
+  font: 500 10.5px/12px var(--font-text);
   text-align: left;
 }
 

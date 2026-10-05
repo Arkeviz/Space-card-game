@@ -51,16 +51,16 @@ const bevel = computed(() => `${Math.round(16 * props.scale)}px`)
     <div v-if="back && count > 0" class="pile__card" :style="innerStyle">
       <CardView :form="CARD_FORM.BACK" />
     </div>
-    <div v-else-if="count === 0" class="pile__empty">
+    <p v-else-if="count === 0" class="pile__empty">
       ПУСТО
-    </div>
+    </p>
     <div v-if="!compact && showBadge" class="pile__badge">
       {{ count }}
     </div>
-    <div class="pile__caption" :class="{ 'pile__caption--compact': compact }">
+    <p class="pile__caption" :class="{ 'pile__caption--compact': compact }">
       <span class="pile__label">{{ label }}</span>
       <span v-if="compact" class="pile__count">{{ count }}</span>
-    </div>
+    </p>
   </div>
 </template>
 
@@ -112,7 +112,7 @@ const bevel = computed(() => `${Math.round(16 * props.scale)}px`)
   justify-content: center;
   border: 1px dashed rgba(143, 163, 200, 0.4);
   color: var(--c-dim);
-  font: 600 9px/1 var(--font-mono);
+  font: 600 11px/1 var(--font-mono);
   letter-spacing: 0.16em;
 }
 
@@ -145,7 +145,7 @@ const bevel = computed(() => `${Math.round(16 * props.scale)}px`)
   top: calc(100% + 14px);
   left: 50%;
   color: var(--c-muted);
-  font: 600 10px/1 var(--font-mono);
+  font: 600 12px/1 var(--font-mono);
   letter-spacing: 0.14em;
   white-space: nowrap;
   transform: translateX(-50%);

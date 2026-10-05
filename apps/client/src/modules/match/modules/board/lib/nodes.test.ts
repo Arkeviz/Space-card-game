@@ -9,7 +9,7 @@ import { buildNodes, NODE_CLICK, NODE_KEY, NODE_ZONE } from './nodes'
 function nodesFor(state: GameState, viewer: PlayerId, hoverKey: string | null = null) {
   const table = buildTable(redact(state, viewer))
   const legal = indexLegalActions(legalActions(state, viewer))
-  return { table, nodes: buildNodes(table, { legal, interactive: true, hoverKey, selectedCardId: null }) }
+  return { table, nodes: buildNodes(table, { legal, interactive: true, hoverKey, selectedCardIds: [] }) }
 }
 
 /** Игрок 0 ходит первым; у него 3 карты в руке. */

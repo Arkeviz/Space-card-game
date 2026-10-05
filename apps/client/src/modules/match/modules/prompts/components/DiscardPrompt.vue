@@ -2,6 +2,7 @@
 import type { CardInstance } from '@space/engine'
 import { computed } from 'vue'
 import GameButton from '@/common/ui/GameButton.vue'
+import { cardsWord } from '@/common/utilities/plural'
 import { cardName, CardThumb } from '@/modules/cards'
 import { RECT } from '../../../lib/rects'
 import PromptTimer from './PromptTimer.vue'
@@ -13,13 +14,13 @@ import PromptTimer from './PromptTimer.vue'
  */
 const props = defineProps<{
   source: CardInstance | null
-  /** Выбранная в руке карта. */
-  selected: CardInstance | null
+  /** Сколько карт выбрано в руке. */
+  selectedCount: number
+  /** Сколько карт нужно (обязательный сброс) или можно (необязательный) сбросить. */
+  limit: number
   deadline: number | null
   /** Свой необязательный сброс (Recycling Station): можно пропустить, а за каждую сброшенную карту берётся новая. */
   optional?: boolean
-  /** Сколько карт ещё можно сбросить. */
-  remaining?: number
 }>()
 
 const emit = defineEmits<{
@@ -31,13 +32,22 @@ const handTop = RECT.SELF_HAND.y
 const handLeft = RECT.SELF_HAND.x - 2
 const handRight = RECT.SELF_HAND.x + RECT.SELF_HAND.w + 2
 
-const title = computed(() => (props.optional ? `Сбросьте до ${props.remaining ?? 1} карт` : 'Сбросьте 1 карту из руки'))
+const title = computed(() => (props.optional ? `Сбросьте до ${props.limit} карт` : `Сбросьте ${cardsWord(props.limit)} из руки`))
+
+// Обязательный сброс требует ровно limit карт, необязательный - хотя бы одну.
+const ready = computed(() => (props.optional ? props.selectedCount > 0 : props.selectedCount === props.limit))
+const buttonText = computed(() => {
+  if (props.limit <= 1)
+    return ready.value ? 'Сбросить' : 'Выберите карту'
+  return `${props.selectedCount === 0 ? 'Выберите карты' : 'Сбросить'} · ${props.selectedCount}/${props.limit}`
+})
 const lead = computed(() => {
   if (props.optional)
     return 'За каждую сброшенную карту вы возьмёте новую. Выберите карту в руке ниже или пропустите шаг.'
+  // Сброс по эффекту соперника выпадает на начало вашего хода, источника карты у такого запроса нет.
   return props.source
     ? `Так сработал «${cardName(props.source.cardId)}» соперника. Выберите карту в руке ниже.`
-    : 'Выберите карту в руке ниже.'
+    : 'Эффект карты соперника: вы сбрасываете карту в начале своего хода. Выберите её в руке ниже.'
 })
 </script>
 
@@ -52,9 +62,9 @@ const lead = computed(() => {
       <span class="bar__corner bar__corner--br" />
       <CardThumb v-if="source" :card-id="source.cardId" :scale="0.36" />
       <div class="bar__text">
-        <div class="bar__kind">
+        <p class="bar__kind">
           СБРОС · {{ optional ? 'ПО ЖЕЛАНИЮ' : 'ОБЯЗАТЕЛЬНО' }}
-        </div>
+        </p>
         <h2 id="discard-title" class="bar__title">
           {{ title }}
         </h2>
@@ -64,15 +74,15 @@ const lead = computed(() => {
       </div>
       <div class="bar__timer">
         <PromptTimer :deadline="deadline" />
-        <div class="bar__fallback">
+        <p class="bar__fallback">
           {{ optional ? 'потом шаг пропустится' : 'потом сбросится первая карта' }}
-        </div>
+        </p>
       </div>
       <GameButton v-if="optional" variant="ghost" :height="56" @click="emit('skip')">
         Пропустить
       </GameButton>
-      <GameButton :height="56" :disabled="!selected" @click="emit('confirm')">
-        {{ selected ? `Сбросить «${cardName(selected.cardId)}»` : 'Выберите карту' }}
+      <GameButton :height="56" :disabled="!ready" @click="emit('confirm')">
+        {{ buttonText }}
       </GameButton>
     </section>
   </div>
@@ -155,7 +165,7 @@ const lead = computed(() => {
 
 .bar__kind {
   color: var(--c-opponent);
-  font: 600 10px/1 var(--font-mono);
+  font: 600 12px/1 var(--font-mono);
   letter-spacing: 0.18em;
 }
 
@@ -167,7 +177,7 @@ const lead = computed(() => {
 .bar__lead {
   margin: 0;
   color: var(--c-text-soft);
-  font: 400 14px/19px var(--font-text);
+  font: 400 16px/21px var(--font-text);
 }
 
 .bar__timer {
@@ -182,7 +192,7 @@ const lead = computed(() => {
 .bar__fallback {
   max-width: 120px;
   color: var(--c-muted);
-  font: 400 11px/14px var(--font-text);
+  font: 400 13px/16px var(--font-text);
   text-align: center;
 }
 </style>

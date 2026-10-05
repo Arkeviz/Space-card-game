@@ -13,10 +13,10 @@ const lastItem = computed(() => [...props.entries].reverse().find(entry => entry
 
 <template>
   <aside class="log" aria-label="Журнал боя">
-    <div class="log__title">
+    <p class="log__title">
       <span>ЖУРНАЛ БОЯ</span>
       <span class="log__live">LIVE</span>
-    </div>
+    </p>
     <ol class="log__list">
       <template v-for="entry in visible" :key="entry.id">
         <li v-if="entry.kind === LOG_KIND.HEAD" class="log__head" :class="entry.mine ? 'log__head--me' : 'log__head--opponent'">

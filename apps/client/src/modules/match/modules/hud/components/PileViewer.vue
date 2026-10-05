@@ -3,7 +3,7 @@ import type { PileViewerItem } from '../lib/pile-items'
 import AppDialog from '@/common/ui/AppDialog.vue'
 import { cardName, CardThumb } from '@/modules/cards'
 
-/** Просмотр стопки (сброс, свалка, состав колоды): карты лицом вверх, одинаковые собраны в одну со счётчиком. */
+/** Просмотр стопки (сброс, утиль, состав колоды): карты лицом вверх, одинаковые собраны в одну со счётчиком. */
 defineProps<{
   title: string
   items: PileViewerItem[]
@@ -24,7 +24,7 @@ const emit = defineEmits<{ close: [] }>()
     </p>
     <ul v-else class="cards">
       <li v-for="item in items" :key="item.key" class="item">
-        <CardThumb :card-id="item.cardId" :scale="0.95" />
+        <CardThumb :card-id="item.cardId" :scale="0.95" zoom />
         <span v-if="item.count > 1" class="item__count" aria-hidden="true">×{{ item.count }}</span>
         <span class="visually-hidden">{{ cardName(item.cardId) }}{{ item.count > 1 ? `, ${item.count} шт.` : '' }}</span>
       </li>

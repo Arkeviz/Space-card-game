@@ -48,9 +48,9 @@ function confirm(): void {
         </button>
       </template>
       <template v-else>
-        <div class="menu__question" role="alertdialog" aria-label="Подтверждение">
+        <p class="menu__question" role="alertdialog" aria-label="Подтверждение">
           Сдаться? Партия будет засчитана как поражение.
-        </div>
+        </p>
         <div class="menu__actions">
           <button type="button" class="menu__item menu__item--danger" @click="confirm">
             Да, сдаться
@@ -106,7 +106,7 @@ function confirm(): void {
 .menu__question {
   padding: 4px 4px 0;
   color: var(--c-text-soft);
-  font: 400 14px/19px var(--font-text);
+  font: 400 16px/21px var(--font-text);
 }
 
 .menu__actions {
@@ -125,7 +125,7 @@ function confirm(): void {
   border: 0;
   background: transparent;
   color: var(--c-text-quiet);
-  font: 600 13px/1 var(--font-mono);
+  font: 600 15px/1 var(--font-mono);
   letter-spacing: 0.06em;
   box-shadow: inset 0 0 0 1px rgba(143, 163, 200, 0.4);
   cursor: pointer;

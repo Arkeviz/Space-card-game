@@ -5,6 +5,7 @@
  */
 import type { Command } from '@space/engine'
 import type { PileId } from '../modules/board'
+import type { Unspent } from '../modules/hud'
 import type { MatchTransport } from '../store/match-store'
 import { COMMAND_TYPE } from '@space/engine'
 import { useMediaQuery } from '@vueuse/core'
@@ -12,7 +13,7 @@ import { storeToRefs } from 'pinia'
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 import StageScaler from '@/common/ui/StageScaler.vue'
 import { Board, PILE_ID } from '../modules/board'
-import { GameOverScreen, HudLayer, itemsFromCards, itemsFromContents, PileViewer } from '../modules/hud'
+import { EndTurnDialog, GameOverScreen, HudLayer, itemsFromCards, itemsFromContents, PileViewer, unspentResources } from '../modules/hud'
 import { PromptHost } from '../modules/prompts'
 import { useMatchStore } from '../store/match-store'
 
@@ -25,7 +26,7 @@ const props = defineProps<{
 const emit = defineEmits<{ leave: [] }>()
 
 const store = useMatchStore()
-const { table, legalIndex, interactive, busy, speed, log, fx, banner, toast, deadline, timerTotal, selectedCardId } = storeToRefs(store)
+const { table, legalIndex, interactive, busy, speed, log, fx, banner, toast, deadline, timerTotal, selectedCardIds } = storeToRefs(store)
 
 const board = useTemplateRef<InstanceType<typeof Board>>('board')
 
@@ -60,7 +61,7 @@ const viewedPileData = computed(() => {
     case PILE_ID.OPPONENT_DISCARD:
       return { title: `СБРОС СОПЕРНИКА · ${table.value.opponent.discard.length}`, items: itemsFromCards(table.value.opponent.discard) }
     case PILE_ID.SCRAP_HEAP:
-      return { title: `СВАЛКА · ${table.value.scrapHeap.length}`, items: itemsFromCards(table.value.scrapHeap) }
+      return { title: `УТИЛЬ · ${table.value.scrapHeap.length}`, items: itemsFromCards(table.value.scrapHeap) }
   }
   return null
 })
@@ -75,8 +76,6 @@ const gameOver = computed(() => {
     win,
     turn: state.turn,
     conceded: loser.authority > 0,
-    self: state.self.authority,
-    opponent: state.opponent.authority,
   }
 })
 
@@ -94,10 +93,31 @@ function attackPlayer(amount: number): void {
   run({ type: COMMAND_TYPE.ATTACK_PLAYER, amount })
 }
 
+// Если к концу хода осталась атака или торговля, которую ещё можно потратить, сначала спрашиваем.
+const endTurnWarning = ref<Unspent | null>(null)
+
+function requestEndTurn(): void {
+  const unspent = table.value ? unspentResources(table.value.pools, legalIndex.value) : null
+  if (unspent)
+    endTurnWarning.value = unspent
+  else
+    run({ type: COMMAND_TYPE.END_TURN })
+}
+
+// Ход сменился сам (таймаут, сдача): предупреждение больше не нужно.
+watch(() => table.value?.currentPlayer, () => {
+  endTurnWarning.value = null
+})
+
+function confirmEndTurn(): void {
+  endTurnWarning.value = null
+  run({ type: COMMAND_TYPE.END_TURN })
+}
+
 // Выбор карты для сброса относится к конкретному prompt: новый prompt начинается без выбора.
 const pending = computed(() => table.value?.prompt ?? null)
 watch(pending, () => {
-  selectedCardId.value = null
+  selectedCardIds.value = []
 })
 </script>
 
@@ -118,7 +138,7 @@ watch(pending, () => {
         :online="online"
         :play-all-count="store.playingAll ? 0 : store.playableCount"
         @attack="attackPlayer"
-        @end-turn="run({ type: COMMAND_TYPE.END_TURN })"
+        @end-turn="requestEndTurn"
         @play-all="store.playAll()"
         @concede="run({ type: COMMAND_TYPE.CONCEDE })"
       />
@@ -128,7 +148,7 @@ watch(pending, () => {
         :table="table"
         :legal="legalIndex"
         :interactive="interactive"
-        :selected-card-id="selectedCardId"
+        :selected-card-ids="selectedCardIds"
         :speed="layerSpeed"
         @command="run"
         @select="store.select"
@@ -140,8 +160,15 @@ watch(pending, () => {
         :table="table"
         :legal="legalIndex"
         :deadline="deadline"
-        :selected-card-id="selectedCardId"
+        :selected-card-ids="selectedCardIds"
         @command="run"
+      />
+
+      <EndTurnDialog
+        v-if="endTurnWarning && table.winner === null"
+        :unspent="endTurnWarning"
+        @confirm="confirmEndTurn"
+        @cancel="endTurnWarning = null"
       />
 
       <PileViewer v-if="viewedPileData" :title="viewedPileData.title" :items="viewedPileData.items" :note="viewedPileData.note" @close="viewedPile = null" />
@@ -150,8 +177,6 @@ watch(pending, () => {
         v-if="gameOver && showGameOver"
         :win="gameOver.win"
         :turn="gameOver.turn"
-        :self-authority="gameOver.self"
-        :opponent-authority="gameOver.opponent"
         :conceded="gameOver.conceded"
         @new-match="emit('leave')"
         @view-field="hideGameOver = true"
@@ -160,9 +185,9 @@ watch(pending, () => {
         {{ gameOver.win ? 'ПОБЕДА' : 'ПОРАЖЕНИЕ' }} · ИТОГИ
       </button>
 
-      <div v-if="toast" class="match__toast" role="alert">
+      <p v-if="toast" class="match__toast" role="alert">
         {{ toast }}
-      </div>
+      </p>
     </div>
   </StageScaler>
 </template>

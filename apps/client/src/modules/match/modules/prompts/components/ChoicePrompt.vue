@@ -45,7 +45,7 @@ onKeyStroke(['1', '2', '3', '4', '5', '6', '7', '8', '9'], (event) => {
     </template>
 
     <div class="source">
-      <CardThumb v-if="source" :card-id="source.cardId" :form="deployed" :scale="0.9" />
+      <CardThumb v-if="source" :card-id="source.cardId" :form="deployed" :scale="0.9" zoom />
       <p class="source__lead">
         Выберите один эффект: второй не сработает.
       </p>
@@ -150,17 +150,17 @@ onKeyStroke(['1', '2', '3', '4', '5', '6', '7', '8', '9'], (event) => {
   height: 24px;
   margin-left: auto;
   color: var(--c-muted);
-  font: 600 11px/1 var(--font-mono);
+  font: 600 13px/1 var(--font-mono);
   box-shadow: inset 0 0 0 1px rgba(143, 163, 200, 0.45);
 }
 
 .option__preview {
   color: #9fb2d6;
-  font: 400 14px/1.2 var(--font-text);
+  font: 400 16px/1.2 var(--font-text);
 }
 
 .foot {
   color: var(--c-muted);
-  font: 400 13px/18px var(--font-text);
+  font: 400 15px/20px var(--font-text);
 }
 </style>

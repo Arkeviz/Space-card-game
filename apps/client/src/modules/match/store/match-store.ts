@@ -10,7 +10,7 @@ import { computed, ref, shallowRef } from 'vue'
 import { AnimationDirector, introStartTable, isFreshGame } from '../modules/animation-director'
 import { motionFor } from '../modules/board'
 import { BANNER_LIFETIME_MS, describeStep, FX_LIFETIME_MS } from '../modules/hud'
-import { buildTable, indexLegalActions, nextCardToPlay } from '../modules/table'
+import { buildTable, discardLimit, indexLegalActions, nextCardToPlay } from '../modules/table'
 
 /** Результат отправки команды. reason - код ошибки движка или 'connection-lost'. */
 export type CommandOutcome = { ok: true } | { ok: false, reason: CommandError | 'connection-lost' }
@@ -62,7 +62,8 @@ export const useMatchStore = defineStore('match', () => {
   const toast = ref<string | null>(null)
   const deadline = ref<number | null>(null)
   const timerTotal = ref(0)
-  const selectedCardId = ref<string | null>(null)
+  /** Карты руки, выбранные для сброса (их может быть несколько, если сбросить нужно больше одной). */
+  const selectedCardIds = ref<string[]>([])
 
   const legalIndex = computed(() => indexLegalActions(legal.value))
   const interactive = computed(() => !busy.value && !waitingForUpdate.value && table.value !== null && table.value.winner === null)
@@ -141,7 +142,7 @@ export const useMatchStore = defineStore('match', () => {
     // Если мы ждали ответа на свою команду, пришедший update - это он.
     const update = waitingForUpdate.value ? { ...raw, own: true } : raw
     clearTimeout(waitTimer)
-    selectedCardId.value = null
+    selectedCardIds.value = []
 
     const expected = lastVersion + 1
     lastVersion = update.version
@@ -219,7 +220,7 @@ export const useMatchStore = defineStore('match', () => {
     toast.value = null
     deadline.value = null
     timerTotal.value = 0
-    selectedCardId.value = null
+    selectedCardIds.value = []
   }
 
   /** Возвращает true, если сервер принял команду. */
@@ -273,8 +274,18 @@ export const useMatchStore = defineStore('match', () => {
     }
   }
 
+  /** Выбор карты руки для сброса: повторное нажатие снимает выбор; когда набрано нужное число, лишние не добавляются. */
   function select(cardId: string): void {
-    selectedCardId.value = selectedCardId.value === cardId ? null : cardId
+    const chosen = selectedCardIds.value
+    if (chosen.includes(cardId)) {
+      selectedCardIds.value = chosen.filter(id => id !== cardId)
+      return
+    }
+    const limit = table.value ? discardLimit(table.value) : 1
+    if (limit <= 1)
+      selectedCardIds.value = [cardId]
+    else if (chosen.length < limit)
+      selectedCardIds.value = [...chosen, cardId]
   }
 
   return {
@@ -290,7 +301,7 @@ export const useMatchStore = defineStore('match', () => {
     toast,
     deadline,
     timerTotal,
-    selectedCardId,
+    selectedCardIds,
     attach,
     start,
     detach,

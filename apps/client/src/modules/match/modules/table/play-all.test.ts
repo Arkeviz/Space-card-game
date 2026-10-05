@@ -4,12 +4,15 @@ import { cardOpensPrompt, nextCardToPlay } from './play-all'
 const hand = (...cardIds: string[]) => cardIds.map((cardId, index) => ({ id: `h${index}`, cardId }))
 
 describe('cardOpensPrompt', () => {
-  it('корабли с утилизацией, выбором или сбросом соперника открывают запрос, простые - нет', () => {
+  it('корабли с утилизацией или выбором открывают запрос, простые - нет', () => {
     expect(cardOpensPrompt('scout')).toBe(false)
     expect(cardOpensPrompt('cutter')).toBe(false)
     expect(cardOpensPrompt('trade-bot')).toBe(true)
     expect(cardOpensPrompt('battle-pod')).toBe(true)
-    expect(cardOpensPrompt('imperial-fighter')).toBe(true)
+  })
+
+  it('сброс у соперника запроса не открывает: соперник сбросит карту в начале своего хода', () => {
+    expect(cardOpensPrompt('imperial-fighter')).toBe(false)
   })
 
   it('базы запроса при розыгрыше не открывают: их способность активируется отдельно', () => {
@@ -20,11 +23,11 @@ describe('cardOpensPrompt', () => {
 
 describe('nextCardToPlay', () => {
   it('сначала простые карты в порядке руки, карты с выбором - в конце', () => {
-    const cards = hand('trade-bot', 'scout', 'imperial-fighter', 'viper')
+    const cards = hand('trade-bot', 'scout', 'battle-pod', 'viper')
     const playable = new Set(cards.map(card => card.id))
     expect(nextCardToPlay(cards, playable)).toBe('h1')
     expect(nextCardToPlay(cards.filter(card => card.id !== 'h1'), playable)).toBe('h3')
-    expect(nextCardToPlay(cards.filter(card => card.cardId === 'trade-bot' || card.cardId === 'imperial-fighter'), playable)).toBe('h0')
+    expect(nextCardToPlay(cards.filter(card => card.cardId === 'trade-bot' || card.cardId === 'battle-pod'), playable)).toBe('h0')
   })
 
   it('играть нечего, если ни одна карта не разрешена', () => {

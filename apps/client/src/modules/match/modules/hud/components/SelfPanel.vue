@@ -22,20 +22,20 @@ defineProps<{
         <AppIcon :name="ICON.USER" :size="30" :stroke="1.5" />
       </div>
       <div class="panel__info">
-        <div class="panel__name">
+        <p class="panel__name">
           Вы
-        </div>
-        <div class="panel__status" :class="{ 'panel__status--offline': !online }">
+        </p>
+        <p class="panel__status" :class="{ 'panel__status--offline': !online }">
           <span class="panel__dot" />
           <span>{{ online ? 'В СЕТИ' : 'НЕТ СВЯЗИ' }}</span>
-        </div>
+        </p>
       </div>
     </div>
     <div class="panel__authority">
-      <div class="panel__label">
+      <p class="panel__label">
         <AppIcon :name="ICON.AUTHORITY" :size="13" :stroke="2.4" />
         <span>АВТОРИТЕТ</span>
-      </div>
+      </p>
       <div class="panel__value">
         {{ authority }}
         <FxFloat :items="fx" />

@@ -205,6 +205,7 @@ export function reduceEvent(table: TableState, event: GameEvent): TableState {
       break
 
     case EVENT_TYPE.TURN_ENDED:
+    case EVENT_TYPE.DISCARD_QUEUED:
       break
   }
 

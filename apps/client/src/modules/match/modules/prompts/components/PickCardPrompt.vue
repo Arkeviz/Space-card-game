@@ -97,9 +97,9 @@ function confirm(): void {
     </p>
 
     <div class="section">
-      <div class="section__title">
+      <p class="section__title">
         {{ texts.section }} · {{ options.length }}
-      </div>
+      </p>
       <div class="section__cards">
         <button
           v-for="option in options"
@@ -110,16 +110,16 @@ function confirm(): void {
           :aria-pressed="selected === option.id"
           @click="selected = selected === option.id ? null : option.id"
         >
-          <CardThumb :card-id="option.cardId" :scale="0.7" :state="selected === option.id ? CARD_STATE.SELECTED : CARD_STATE.SELECTABLE" />
+          <CardThumb :card-id="option.cardId" :scale="0.7" zoom :state="selected === option.id ? CARD_STATE.SELECTED : CARD_STATE.SELECTABLE" />
         </button>
       </div>
     </div>
 
     <template #footer>
-      <div class="note">
+      <p class="note">
         <AppIcon :name="ICON.CLOCK" :size="14" />
         <span>{{ optional ? 'Если время выйдет, шаг будет пропущен.' : `Если время выйдет, ${texts.fallback.toLowerCase()}` }}</span>
-      </div>
+      </p>
       <GameButton v-if="optional" variant="ghost" :height="52" @click="emit('skip')">
         Пропустить
       </GameButton>
@@ -145,7 +145,7 @@ function confirm(): void {
 
 .section__title {
   color: var(--c-muted);
-  font: 600 10px/1 var(--font-mono);
+  font: 600 12px/1 var(--font-mono);
   letter-spacing: 0.18em;
 }
 
@@ -171,6 +171,6 @@ function confirm(): void {
   gap: 8px;
   align-items: center;
   color: var(--c-muted);
-  font: 400 13px/18px var(--font-text);
+  font: 400 15px/20px var(--font-text);
 }
 </style>

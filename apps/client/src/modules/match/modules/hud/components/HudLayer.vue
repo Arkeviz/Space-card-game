@@ -78,9 +78,11 @@ const hint = computed(() => hintFor(props.table, props.legal))
         :timer-total="timerTotal"
         :can-end-turn="canEndTurn"
         :play-all-count="playAllCount"
+        :attack-amount="attackAmount"
         :fx="fx"
         @end-turn="emit('endTurn')"
         @play-all="emit('playAll')"
+        @attack="emit('attack', attackAmount)"
       />
     </div>
 

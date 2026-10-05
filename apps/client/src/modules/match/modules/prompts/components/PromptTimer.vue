@@ -17,10 +17,10 @@ const clock = computed(() => {
 </script>
 
 <template>
-  <div v-if="deadline !== null" class="timer">
+  <p v-if="deadline !== null" class="timer">
     <AppIcon :name="ICON.CLOCK" :size="14" />
     <span>{{ clock }}</span>
-  </div>
+  </p>
 </template>
 
 <style scoped>
@@ -29,7 +29,7 @@ const clock = computed(() => {
   align-items: center;
   gap: 6px;
   color: var(--c-text-quiet);
-  font: 600 12px/1 var(--font-mono);
+  font: 600 14px/1 var(--font-mono);
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.1em;
 }

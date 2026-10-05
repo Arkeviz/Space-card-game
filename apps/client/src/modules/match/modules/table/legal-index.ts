@@ -68,6 +68,8 @@ export function indexLegalActions(actions: readonly Command[]): LegalIndex {
         index.promptCards.add(action.cardId)
         index.promptId = action.promptId
         break
+      case COMMAND_TYPE.CHOOSE_CARDS:
+        break
       case COMMAND_TYPE.SKIP:
         index.canSkip = true
         index.promptId = action.promptId

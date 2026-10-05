@@ -78,9 +78,9 @@ function confirm(): void {
     </p>
 
     <div v-for="section in sections" :key="section.zone" class="section">
-      <div class="section__title">
+      <p class="section__title">
         {{ section.title }} · {{ section.cards.length }}
-      </div>
+      </p>
       <div class="section__cards">
         <button
           v-for="card in section.cards"
@@ -91,16 +91,16 @@ function confirm(): void {
           :aria-pressed="selected === card.id"
           @click="selected = selected === card.id ? null : card.id"
         >
-          <CardThumb :card-id="card.cardId" :scale="0.7" :state="selected === card.id ? CARD_STATE.SELECTED : CARD_STATE.SELECTABLE" />
+          <CardThumb :card-id="card.cardId" :scale="0.7" zoom :state="selected === card.id ? CARD_STATE.SELECTED : CARD_STATE.SELECTABLE" />
         </button>
       </div>
     </div>
 
     <template #footer>
-      <div class="note">
+      <p class="note">
         <AppIcon :name="ICON.CLOCK" :size="14" />
         <span>{{ optional ? 'Если время выйдет, утилизация будет пропущена.' : 'Если время выйдет, сервер выберет первую карту.' }}</span>
-      </div>
+      </p>
       <GameButton v-if="optional" variant="ghost" :height="52" @click="emit('skip')">
         Пропустить
       </GameButton>
@@ -127,7 +127,7 @@ function confirm(): void {
 
 .section__title {
   color: var(--c-muted);
-  font: 600 10px/1 var(--font-mono);
+  font: 600 12px/1 var(--font-mono);
   letter-spacing: 0.18em;
 }
 
@@ -153,6 +153,6 @@ function confirm(): void {
   gap: 8px;
   align-items: center;
   color: var(--c-muted);
-  font: 400 13px/18px var(--font-text);
+  font: 400 15px/20px var(--font-text);
 }
 </style>

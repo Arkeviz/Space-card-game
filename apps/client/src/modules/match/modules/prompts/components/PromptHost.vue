@@ -7,6 +7,7 @@ import type { Command } from '@space/engine'
 import type { LegalIndex, TableState } from '../../table'
 import { COMMAND_TYPE, PROMPT_KIND } from '@space/engine'
 import { computed } from 'vue'
+import { discardLimit } from '../../table'
 import { findSourceCard } from '../lib/prompt-info'
 import ChoicePrompt from './ChoicePrompt.vue'
 import DiscardPrompt from './DiscardPrompt.vue'
@@ -17,15 +18,15 @@ const props = defineProps<{
   table: TableState
   legal: LegalIndex
   deadline: number | null
-  /** Карта, выбранная в руке для сброса. */
-  selectedCardId: string | null
+  /** Карты, выбранные в руке для сброса. */
+  selectedCardIds: readonly string[]
 }>()
 
 const emit = defineEmits<{ command: [command: Command] }>()
 
 const prompt = computed(() => (props.table.prompt && props.table.prompt.player === props.table.you ? props.table.prompt : null))
 const source = computed(() => (prompt.value ? findSourceCard(props.table, prompt.value.source) : null))
-const selectedCard = computed(() => props.table.self.hand.find(card => card.id === props.selectedCardId) ?? null)
+const limit = computed(() => discardLimit(props.table))
 
 function choose(index: number): void {
   if (prompt.value)
@@ -35,6 +36,16 @@ function choose(index: number): void {
 function chooseCard(cardId: string): void {
   if (prompt.value)
     emit('command', { type: COMMAND_TYPE.CHOOSE_CARD, promptId: prompt.value.id, cardId })
+}
+
+/** Сброс: одна карта - обычным ответом, несколько - одним ответом на весь запрос. */
+function discard(): void {
+  if (!prompt.value || props.selectedCardIds.length === 0)
+    return
+  if (limit.value <= 1)
+    emit('command', { type: COMMAND_TYPE.CHOOSE_CARD, promptId: prompt.value.id, cardId: props.selectedCardIds[0]! })
+  else
+    emit('command', { type: COMMAND_TYPE.CHOOSE_CARDS, promptId: prompt.value.id, cardIds: [...props.selectedCardIds] })
 }
 
 function skip(): void {
@@ -84,11 +95,11 @@ function skip(): void {
       v-else
       :key="prompt.id"
       :source="source"
-      :selected="selectedCard"
+      :selected-count="selectedCardIds.length"
+      :limit="limit"
       :deadline="deadline"
       :optional="prompt.optional"
-      :remaining="prompt.remaining"
-      @confirm="selectedCard && chooseCard(selectedCard.id)"
+      @confirm="discard"
       @skip="skip"
     />
   </template>

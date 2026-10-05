@@ -17,7 +17,14 @@ describe('describeStep', () => {
     const ship = describeStep([{ type: EVENT_TYPE.CARD_PLAYED, player: 0, card: { id: 'a', cardId: 'cutter' } }], table, table)
     expect(ship.entries[0]!.text).toBe('Разыграна «Катер»: +4 авторитета, +2 торговли')
     const base = describeStep([{ type: EVENT_TYPE.CARD_PLAYED, player: 1, card: { id: 'b', cardId: 'barter-world' } }], table, table)
-    expect(base.entries[0]).toMatchObject({ mine: false, text: 'Разыграна «Мир бартера» - база, прочность 4' })
+    expect(base.entries[0]).toMatchObject({ mine: false, text: 'Разыграна «Рыночный мир» - база, прочность 4' })
+  })
+
+  it('отложенный сброс: запись о том, что карту придётся сбросить в начале хода', () => {
+    const mine = describeStep([{ type: EVENT_TYPE.DISCARD_QUEUED, player: 1, amount: 1 }], table, table)
+    expect(mine.entries[0]).toMatchObject({ mine: true, text: 'Соперник сбросит 1 карту в начале своего хода' })
+    const theirs = describeStep([{ type: EVENT_TYPE.DISCARD_QUEUED, player: 0, amount: 2 }], table, table)
+    expect(theirs.entries[0]).toMatchObject({ mine: false, text: 'Вы сбросите 2 карты в начале своего хода' })
   })
 
   it('атака по игроку: запись и красное число у авторитета пострадавшего', () => {

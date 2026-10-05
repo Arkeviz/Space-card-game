@@ -6,9 +6,9 @@ defineProps<{ banner: TurnBanner | null }>()
 </script>
 
 <template>
-  <div v-if="banner" :key="banner.id" class="banner" :class="banner.mine ? 'banner--me' : 'banner--opponent'" aria-hidden="true">
+  <p v-if="banner" :key="banner.id" class="banner" :class="banner.mine ? 'banner--me' : 'banner--opponent'" aria-hidden="true">
     <span class="banner__text">{{ banner.text }}</span>
-  </div>
+  </p>
 </template>
 
 <style scoped>

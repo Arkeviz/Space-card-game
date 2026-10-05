@@ -77,8 +77,8 @@ export interface NodeContext {
   /** Принимается ли сейчас ввод: очередь анимаций пуста, партия не окончена, нет ожидающей команды. */
   interactive: boolean
   hoverKey: string | null
-  /** Выбранная карта в prompt сброса (подтверждается кнопкой). */
-  selectedCardId: string | null
+  /** Выбранные карты в prompt сброса (подтверждаются кнопкой). */
+  selectedCardIds: readonly string[]
 }
 
 const IDLE_ABILITIES = { basic: ABILITY_STATUS.AUTO, ally: ABILITY_STATUS.AUTO, scrap: ABILITY_STATUS.AUTO } as const
@@ -118,7 +118,7 @@ function handNodes(table: TableState, ctx: NodeContext): CardNode[] {
     node.label = `«${cardName(card.cardId)}» в руке`
 
     if (discarding && ctx.interactive && ctx.legal.promptCards.has(card.id)) {
-      const selected = ctx.selectedCardId === card.id
+      const selected = ctx.selectedCardIds.includes(card.id)
       node.state = selected ? CARD_STATE.SELECTED : CARD_STATE.SELECTABLE
       node.click = { kind: NODE_CLICK.SELECT, cardId: card.id }
       node.label = `Сбросить «${cardName(card.cardId)}»`

@@ -23,15 +23,15 @@ const chars = computed(() => props.code.split(''))
     <main class="wait space-backdrop">
       <OrbitDecor hollow />
 
-      <div class="wait__brand">
+      <p class="wait__brand">
         <AppIcon :name="ICON.LOGO" :size="30" :stroke="1.4" class="wait__logo" />
         <span class="wait__brand-name">ЗВЁЗДНЫЕ ИМПЕРИИ</span>
-      </div>
+      </p>
 
       <div class="wait__column">
-        <div class="wait__eyebrow">
+        <p class="wait__eyebrow">
           МАТЧ СОЗДАН
-        </div>
+        </p>
         <h1 class="wait__title">
           Ждём соперника
         </h1>
@@ -40,9 +40,9 @@ const chars = computed(() => props.code.split(''))
         </p>
 
         <div class="wait__code-block">
-          <div class="wait__label">
+          <p class="wait__label">
             КОД МАТЧА
-          </div>
+          </p>
           <div class="wait__code" role="img" :aria-label="`Код матча ${code}`">
             <div v-for="(char, index) in chars" :key="index" class="wait__char">
               {{ char }}
@@ -53,18 +53,18 @@ const chars = computed(() => props.code.split(''))
               <AppIcon :name="ICON.COPY" :size="17" />
               <span>{{ copied ? 'Скопировано' : 'Копировать код' }}</span>
             </GameButton>
-            <div class="wait__status" role="status">
+            <p class="wait__status" role="status">
               <span class="wait__pulse" />
               <span>Ожидание подключения…</span>
-            </div>
+            </p>
           </div>
         </div>
 
         <div class="wait__foot">
-          <div class="wait__note">
+          <p class="wait__note">
             <AppIcon :name="ICON.INFO" :size="16" />
             <span>Код перестаёт действовать, как только соперник займёт место.</span>
-          </div>
+          </p>
           <button type="button" class="wait__cancel" @click="emit('cancel')">
             <AppIcon :name="ICON.BACK" :size="16" />
             <span>ОТМЕНИТЬ</span>
@@ -72,10 +72,10 @@ const chars = computed(() => props.code.split(''))
         </div>
       </div>
 
-      <div class="wait__server" :class="{ 'wait__server--off': !connected }">
+      <p class="wait__server" :class="{ 'wait__server--off': !connected }">
         <span class="wait__dot" />
         <span>{{ connected ? 'СЕРВЕР · ПОДКЛЮЧЕНО' : 'СЕРВЕР · НЕТ СВЯЗИ' }}</span>
-      </div>
+      </p>
     </main>
   </StageScaler>
 </template>

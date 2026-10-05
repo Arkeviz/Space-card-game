@@ -22,36 +22,40 @@ defineEmits<{ attack: [] }>()
 <template>
   <section class="panel" :class="{ 'panel--active': active }" aria-label="Соперник">
     <span class="panel__corner" />
-    <div class="panel__avatar">
-      <AppIcon :name="ICON.USER" :size="26" :stroke="1.5" />
-    </div>
+    <!-- Атаковать соперника можно кликом по аватару: это та же команда, что и кнопка «Атаковать» в панели хода. -->
+    <button
+      type="button"
+      class="panel__avatar"
+      :class="{ 'panel__avatar--target': attackAmount > 0 }"
+      :disabled="attackAmount === 0"
+      :aria-label="attackAmount > 0 ? `Атаковать соперника: ${attackAmount}` : 'Соперник'"
+      @click="$emit('attack')"
+    >
+      <AppIcon :name="attackAmount > 0 ? ICON.COMBAT : ICON.USER" :size="26" :stroke="attackAmount > 0 ? 2 : 1.5" />
+    </button>
     <div class="panel__info">
-      <div class="panel__name">
+      <p class="panel__name">
         Соперник
-      </div>
-      <div class="panel__sub">
+      </p>
+      <p class="panel__sub">
         РУКА {{ handCount }}
-      </div>
+      </p>
     </div>
     <div class="panel__authority">
       <div class="panel__value">
         {{ authority }}
         <FxFloat :items="fx" />
       </div>
-      <div class="panel__label">
+      <p class="panel__label">
         <AppIcon :name="ICON.AUTHORITY" :size="11" :stroke="2.4" />
         <span>АВТОРИТЕТ</span>
-      </div>
+      </p>
     </div>
 
-    <div v-if="protectedByOutpost" class="panel__badge">
+    <p v-if="protectedByOutpost" class="panel__badge">
       <AppIcon :name="ICON.LOCK" :size="12" />
       <span>ЗАЩИЩЁН АВАНПОСТОМ</span>
-    </div>
-    <button v-else-if="attackAmount > 0" type="button" class="panel__badge panel__badge--attack" @click="$emit('attack')">
-      <AppIcon :name="ICON.COMBAT" :size="13" :stroke="2.4" />
-      <span>АТАКОВАТЬ · {{ attackAmount }}</span>
-    </button>
+    </p>
   </section>
 </template>
 
@@ -90,6 +94,9 @@ defineEmits<{ attack: [] }>()
   justify-content: center;
   width: 52px;
   height: 52px;
+  padding: 0;
+  border: 0;
+  cursor: default;
   background: repeating-linear-gradient(135deg, rgba(179, 156, 255, 0.14) 0 6px, rgba(179, 156, 255, 0.04) 6px 12px);
   color: var(--c-opponent);
   box-shadow: inset 0 0 0 1px rgba(179, 156, 255, 0.5);
@@ -155,14 +162,28 @@ defineEmits<{ attack: [] }>()
   box-shadow: inset 0 0 0 1px rgba(169, 182, 207, 0.45);
 }
 
-.panel__badge--attack {
-  background: var(--c-combat);
-  color: #1a0605;
-  box-shadow: none;
+/* Когда соперника можно атаковать, аватар краснеет и пульсирует: это кнопка. */
+.panel__avatar--target {
+  background: rgba(255, 90, 79, 0.16);
+  color: var(--c-combat);
+  box-shadow: inset 0 0 0 1px var(--c-combat), 0 0 16px rgba(255, 90, 79, 0.35);
   cursor: pointer;
+  animation: avatar-pulse 1.6s ease-in-out infinite;
 }
 
-.panel__badge--attack:hover {
-  filter: brightness(1.12);
+.panel__avatar--target:hover {
+  background: rgba(255, 90, 79, 0.3);
+}
+
+@keyframes avatar-pulse {
+  50% {
+    box-shadow: inset 0 0 0 1px var(--c-combat), 0 0 26px rgba(255, 90, 79, 0.65);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel__avatar--target {
+    animation: none;
+  }
 }
 </style>

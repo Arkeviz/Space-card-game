@@ -20,7 +20,7 @@
   --c-authority: #3fe0a0;
 
   --font-display: 'Unbounded', sans-serif;
-  --font-text: 'IBM Plex Sans Condensed', 'Arial Narrow', sans-serif;
+  --font-text: 'Exo 2', 'Arial Narrow', sans-serif;
   --font-mono: 'IBM Plex Mono', monospace;
 
   color-scheme: dark;
@@ -44,6 +44,10 @@ body {
   background: var(--c-bg);
   color: var(--c-text);
   font-family: var(--font-text);
+}
+
+p {
+  margin: 0;
 }
 
 button {

@@ -5,8 +5,9 @@
  * и окно должно масштабироваться вместе с ней.
  */
 import { onClickOutside, onKeyStroke } from '@vueuse/core'
-import { onBeforeUnmount, onMounted, useId, useTemplateRef } from 'vue'
+import { onBeforeUnmount, onMounted, provide, useId, useTemplateRef } from 'vue'
 import AppIcon from './AppIcon.vue'
+import { DIALOG_LAYER_KEY } from './dialog-layer'
 import { ICON } from './icons'
 
 const props = withDefaults(defineProps<{
@@ -38,6 +39,7 @@ const emit = defineEmits<{ close: [] }>()
 
 const titleId = useId()
 const panel = useTemplateRef<HTMLElement>('panel')
+provide(DIALOG_LAYER_KEY, useTemplateRef<HTMLElement>('overlay'))
 let previousFocus: HTMLElement | null = null
 
 onClickOutside(panel, () => {
@@ -60,7 +62,7 @@ onBeforeUnmount(() => previousFocus?.focus())
 </script>
 
 <template>
-  <div class="dialog-overlay" :style="{ zIndex }">
+  <div ref="overlay" class="dialog-overlay" :style="{ zIndex }">
     <section
       ref="panel"
       class="dialog"
@@ -74,9 +76,9 @@ onBeforeUnmount(() => previousFocus?.focus())
       <span class="dialog__corner dialog__corner--br" />
 
       <header v-if="eyebrow || $slots['header-extra']" class="dialog__head">
-        <div class="dialog__eyebrow">
+        <p class="dialog__eyebrow">
           {{ eyebrow }}
-        </div>
+        </p>
         <slot name="header-extra" />
       </header>
 
@@ -156,7 +158,7 @@ onBeforeUnmount(() => previousFocus?.focus())
 .dialog__eyebrow {
   flex: 1;
   color: var(--accent);
-  font: 600 11px/1 var(--font-mono);
+  font: 600 13px/1 var(--font-mono);
   letter-spacing: 0.18em;
 }
 

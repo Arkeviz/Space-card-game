@@ -2,7 +2,6 @@
 import type { Pools } from '@space/engine'
 import type { FxItem } from '../lib/fx'
 import type { Hint, TurnInfo } from '../lib/turn-info'
-import { RESOURCE } from '@space/engine'
 import { computed } from 'vue'
 import { useTick } from '@/common/composables/useTick'
 import AppIcon from '@/common/ui/AppIcon.vue'
@@ -24,12 +23,15 @@ const props = defineProps<{
   canEndTurn: boolean
   /** Сколько карт руки можно сыграть кнопкой «разыграть все». */
   playAllCount: number
+  /** Сколько атаки можно нанести игроку (0 - атаковать нельзя: нет атаки, прикрывает аванпост или ввод закрыт). */
+  attackAmount: number
   fx: FxItem[]
 }>()
 
 defineEmits<{
   endTurn: []
   playAll: []
+  attack: []
 }>()
 
 const now = useTick()
@@ -40,7 +42,6 @@ const urgent = computed(() => remaining.value !== null && remaining.value <= 15_
 
 const accent = computed(() => (props.info.mine ? 'var(--c-me)' : 'var(--c-opponent)'))
 const poolsTitle = computed(() => (props.info.mine ? 'ВАШ ПУЛ' : 'ПУЛ СОПЕРНИКА'))
-const unspent = computed(() => props.info.mine && props.canEndTurn && (props.pools[RESOURCE.TRADE] > 0 || props.pools[RESOURCE.COMBAT] > 0))
 
 const tradeFx = computed(() => props.fx.filter(item => item.target === FX_TARGET.TRADE))
 const combatFx = computed(() => props.fx.filter(item => item.target === FX_TARGET.COMBAT))
@@ -51,28 +52,28 @@ const combatFx = computed(() => props.fx.filter(item => item.target === FX_TARGE
     <div class="turn__card" :class="{ 'turn__card--opponent': !info.mine }" :style="{ '--accent': accent }">
       <span class="turn__corner turn__corner--tl" />
       <span class="turn__corner turn__corner--br" />
-      <div class="turn__meta">
+      <p class="turn__meta">
         <span>ХОД {{ turn }}</span>
         <span v-if="remaining !== null" class="turn__clock" :class="{ 'turn__clock--urgent': urgent }">
           <AppIcon :name="ICON.CLOCK" :size="13" />
           <span>{{ clock }}</span>
         </span>
-      </div>
-      <div class="turn__title">
+      </p>
+      <p class="turn__title">
         {{ info.title }}
-      </div>
-      <div v-if="info.sub" class="turn__sub" role="status">
+      </p>
+      <p v-if="info.sub" class="turn__sub" role="status">
         {{ info.sub }}
-      </div>
+      </p>
       <div class="turn__bar">
         <div class="turn__bar-fill" :style="{ width: `${percent}%` }" />
       </div>
     </div>
 
     <div class="pools">
-      <div class="pools__title">
+      <p class="pools__title">
         {{ poolsTitle }}
-      </div>
+      </p>
       <div class="pool pool--trade">
         <AppIcon :name="ICON.TRADE" :size="24" :stroke="1.9" />
         <span class="pool__name">ТОРГОВЛЯ</span>
@@ -91,10 +92,10 @@ const combatFx = computed(() => props.fx.filter(item => item.target === FX_TARGE
       </div>
     </div>
 
-    <div class="hint">
+    <p class="hint">
       <AppIcon :name="hint.icon" :size="16" :style="{ color: hint.color }" />
       <span>{{ hint.text }}</span>
-    </div>
+    </p>
 
     <button v-if="info.mine" type="button" class="play-all" :disabled="playAllCount === 0" @click="$emit('playAll')">
       РАЗЫГРАТЬ ВСЕ<template v-if="playAllCount > 0">
@@ -102,12 +103,15 @@ const combatFx = computed(() => props.fx.filter(item => item.target === FX_TARGE
       </template>
     </button>
 
+    <!-- Кнопка остаётся на месте и после разрушения базы: без атаки она просто неактивна. -->
+    <button v-if="info.mine" type="button" class="attack" :disabled="attackAmount === 0" @click="$emit('attack')">
+      <AppIcon :name="ICON.COMBAT" :size="16" :stroke="2.2" />
+      <span>АТАКОВАТЬ<template v-if="attackAmount > 0"> · {{ attackAmount }}</template></span>
+    </button>
+
     <button type="button" class="end" :disabled="!canEndTurn" @click="$emit('endTurn')">
       {{ info.mine ? 'КОНЕЦ ХОДА' : 'ХОД СОПЕРНИКА' }}
     </button>
-    <div v-if="unspent" class="end__note">
-      Не потрачено: {{ pools.trade }} торговли и {{ pools.combat }} атаки. В конце хода пулы обнуляются.
-    </div>
   </aside>
 </template>
 
@@ -285,6 +289,33 @@ const combatFx = computed(() => props.fx.filter(item => item.target === FX_TARGE
   cursor: default;
 }
 
+.attack {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--c-combat);
+  box-shadow: inset 0 0 0 1px var(--c-combat);
+  font: 600 13px/1 var(--font-mono);
+  letter-spacing: 0.14em;
+  cursor: pointer;
+}
+
+.attack:hover:not(:disabled) {
+  background: rgba(255, 90, 79, 0.12);
+}
+
+.attack:disabled {
+  color: var(--c-dim);
+  box-shadow: inset 0 0 0 1px rgba(143, 163, 200, 0.25);
+  cursor: default;
+}
+
 .end {
   height: 64px;
   margin: 0;
@@ -308,11 +339,5 @@ const combatFx = computed(() => props.fx.filter(item => item.target === FX_TARGE
   color: var(--c-dim);
   box-shadow: inset 0 0 0 1px rgba(143, 163, 200, 0.25);
   cursor: default;
-}
-
-.end__note {
-  color: var(--c-muted);
-  font: 400 12px/16px var(--font-text);
-  text-align: center;
 }
 </style>

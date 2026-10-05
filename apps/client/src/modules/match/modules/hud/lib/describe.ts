@@ -2,6 +2,7 @@ import type { Card, GameEvent, ValueOf } from '@space/engine'
 import type { TableState } from '../../table'
 import type { FxItem, FxTarget } from './fx'
 import { ABILITY_KIND, CARD_KIND, DESTINATION, EVENT_TYPE, getCard, PROMPT_KIND, RESOURCE } from '@space/engine'
+import { cardsWord } from '@/common/utilities/plural'
 import { cardName, describeEffectShort, KIND_LABEL } from '@/modules/cards'
 import { SIDE, sideOf } from '../../table'
 import { FX_TARGET, FX_TONE } from './fx'
@@ -100,6 +101,13 @@ export function describeStep(group: readonly GameEvent[], before: TableState, af
         item(isMine(event.player), `Получен бесплатно: «${cardName(event.card.cardId)}», на верх колоды`)
         break
 
+      case EVENT_TYPE.DISCARD_QUEUED:
+        // Сброс откладывается на начало хода того, кому он адресован: об этом нужно сообщить сразу.
+        item(!isMine(event.player), isMine(event.player)
+          ? `Вы сбросите ${cardsWord(event.amount)} в начале своего хода`
+          : `Соперник сбросит ${cardsWord(event.amount)} в начале своего хода`)
+        break
+
       case EVENT_TYPE.SHIP_COPIED: {
         const own = [...before.self.inPlay, ...before.opponent.inPlay].find(entry => entry.card.id === event.cardId)
         item(isMine(event.player), `«${cardName(own?.card.cardId ?? event.cardId)}» копирует «${cardName(event.copyOf)}»`)
@@ -149,7 +157,7 @@ export function describeStep(group: readonly GameEvent[], before: TableState, af
       case EVENT_TYPE.PROMPT_OPENED:
         // Обязательный сброс по требованию соперника; свой необязательный сброс (Recycling Station) журнал не засоряет.
         if (event.prompt.kind === PROMPT_KIND.DISCARD && !event.prompt.optional)
-          item(!isMine(event.prompt.player), isMine(event.prompt.player) ? 'Вы должны сбросить 1 карту' : 'Соперник должен сбросить карту')
+          item(!isMine(event.prompt.player), isMine(event.prompt.player) ? `Вы должны сбросить ${cardsWord(event.prompt.remaining ?? 1)}` : 'Соперник выбирает карту для сброса')
         break
 
       case EVENT_TYPE.GAME_OVER:
