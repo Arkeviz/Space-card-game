@@ -9,8 +9,8 @@ import { MATCH_ERROR, SERVER_MESSAGE } from '@space/protocol'
 const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
 const CODE_LENGTH = 6
 
-export const DEFAULT_TURN_TIMEOUT_MS = 90_000
-export const DEFAULT_DISCONNECT_TIMEOUT_MS = 60_000
+export const DEFAULT_TURN_TIMEOUT_MS = 120_000
+export const DEFAULT_DISCONNECT_TIMEOUT_MS = 90_000
 
 export interface MatchManagerOptions {
   turnTimeoutMs?: number
