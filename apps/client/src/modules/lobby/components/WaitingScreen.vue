@@ -7,6 +7,7 @@ import GameButton from '@/common/ui/GameButton.vue'
 import { ICON } from '@/common/ui/icons'
 import StageScaler from '@/common/ui/StageScaler.vue'
 import { formatElapsed } from '@/common/utilities/clock'
+import LobbyBackdrop from './LobbyBackdrop.vue'
 import OrbitDecor from './OrbitDecor.vue'
 
 /**
@@ -31,7 +32,10 @@ const elapsed = computed(() => formatElapsed(now.value.getTime() - startedAt))
 
 <template>
   <StageScaler>
-    <main class="wait space-backdrop">
+    <template #backdrop>
+      <LobbyBackdrop />
+    </template>
+    <main class="wait">
       <OrbitDecor hollow />
 
       <p class="wait__brand">

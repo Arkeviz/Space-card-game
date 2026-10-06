@@ -5,7 +5,7 @@ import AppIcon from '@/common/ui/AppIcon.vue'
 import GameButton from '@/common/ui/GameButton.vue'
 import { ICON } from '@/common/ui/icons'
 import StageScaler from '@/common/ui/StageScaler.vue'
-import OrbitDecor from './OrbitDecor.vue'
+import LobbyBackdrop from './LobbyBackdrop.vue'
 
 const props = defineProps<{
   /** Есть ли связь с сервером. */
@@ -40,10 +40,11 @@ function submit(): void {
 
 <template>
   <StageScaler>
-    <main class="lobby space-backdrop">
-      <OrbitDecor />
-
-      <div class="lobby__column">
+    <template #backdrop>
+      <LobbyBackdrop />
+    </template>
+    <main class="lobby">
+      <div class="lobby__hero">
         <p class="lobby__eyebrow">
           ДУЭЛЬ 1 НА 1 · КОЛОДОСТРОИТЕЛЬНАЯ КАРТОЧНАЯ ИГРА
         </p>
@@ -54,7 +55,9 @@ function submit(): void {
         <p class="lobby__lead">
           Покупайте корабли и базы на общем рынке, усиливайте колоду и обнулите авторитет соперника.
         </p>
+      </div>
 
+      <aside class="lobby__console" aria-label="Вход в игру">
         <div class="lobby__controls">
           <label class="lobby__name-field" for="player-name">
             <span class="lobby__label">ВАШЕ ИМЯ</span>
@@ -137,12 +140,12 @@ function submit(): void {
             <span>СПРАВКА</span>
           </button>
         </div>
-      </div>
 
-      <p class="lobby__status" :class="{ 'lobby__status--off': !connected }" role="status">
-        <span class="lobby__dot" />
-        <span>{{ connected ? 'СЕРВЕР · ПОДКЛЮЧЕНО' : 'СЕРВЕР · НЕТ СВЯЗИ' }}</span>
-      </p>
+        <p class="lobby__status" :class="{ 'lobby__status--off': !connected }" role="status">
+          <span class="lobby__dot" />
+          <span>{{ connected ? 'СЕРВЕР · ПОДКЛЮЧЕНО' : 'СЕРВЕР · НЕТ СВЯЗИ' }}</span>
+        </p>
+      </aside>
 
       <!-- Окна (настройки, справка) рисуются внутри сцены, чтобы масштабироваться вместе с ней. -->
       <slot />
@@ -160,7 +163,8 @@ function submit(): void {
   font-family: var(--font-text);
 }
 
-.lobby__column {
+/* Слева на шейдере - название, справа на всю высоту - консоль с действиями (как правая колонка экрана матча). */
+.lobby__hero {
   position: absolute;
   top: 0;
   bottom: 0;
@@ -169,17 +173,33 @@ function submit(): void {
   flex-direction: column;
   gap: 24px;
   justify-content: center;
-  width: 760px;
+  width: 900px;
+}
+
+.lobby__console {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  width: 620px;
+  padding: 72px 56px 48px;
+  background: rgba(7, 12, 24, 0.86);
+  box-shadow: inset 1px 0 0 rgba(79, 216, 255, 0.22);
 }
 
 .lobby__links {
   display: flex;
-  gap: 12px;
-  align-self: flex-start;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 48px;
 }
 
 .lobby__link {
   display: flex;
+  width: 100%;
   gap: 10px;
   align-items: center;
   height: 44px;
@@ -230,8 +250,6 @@ function submit(): void {
   display: flex;
   flex-direction: column;
   gap: 18px;
-  width: 560px;
-  margin-top: 8px;
 }
 
 .lobby__name-field {
@@ -358,8 +376,8 @@ function submit(): void {
 
 .lobby__status {
   position: absolute;
-  bottom: 56px;
-  left: 160px;
+  bottom: 48px;
+  left: 56px;
   display: flex;
   align-items: center;
   gap: 10px;

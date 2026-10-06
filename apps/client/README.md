@@ -91,6 +91,10 @@ wsUrl передаётся параметром (`createGameConnection(wsUrl)`),
 
 Архитектура экрана (слой карт, очередь событий, `TableState`, интерфейс `MatchTransport`) описана в [AGENTS.md](../../AGENTS.md), раздел «Клиент: экран матча». Геометрия сцены (позиции зон и карт) лежит в `src/modules/match/lib/rects.ts` и `src/modules/match/modules/board/lib/layout.ts`: числа перенесены из дизайна, при правке сетки менять их там, а не в разметке.
 
+## Фон лобби: шейдер
+
+Фон главного экрана и экрана ожидания - шейдер Star Nest (`modules/lobby/lib/star-nest.glsl`, автор Pablo Roman Andrioli, лицензия MIT, [исходник на ShaderToy](https://www.shadertoy.com/view/XlfGRj)). Его рисует `common/ui/ShaderToy.vue` через `common/utilities/shader-renderer.ts` (чистый WebGL 2, без зависимостей): идея и параметры (`brightness`, `speed`, `pixelRatio`, `frameRate`) взяты из компонента ShaderToy библиотеки Inspira UI, но мышь и касания не обрабатываются (`iMouse` всегда нулевой), а холст не перехватывает клики. Значения для лобби заданы в `modules/lobby/components/LobbyBackdrop.vue`. Фон выводится слотом `backdrop` у `StageScaler`, то есть на всё окно, а не только на сцену. Если WebGL 2 недоступен, остаётся CSS-фон `space-backdrop`; при `prefers-reduced-motion` шейдер рисуется один раз.
+
 ## Версия приложения
 
 Версионируется только клиент (сайт): версия лежит в `version` файла `apps/client/package.json` (семантическое версионирование),
