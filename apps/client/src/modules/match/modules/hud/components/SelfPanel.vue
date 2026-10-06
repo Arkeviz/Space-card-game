@@ -5,6 +5,8 @@ import { ICON } from '@/common/ui/icons'
 import FxFloat from './FxFloat.vue'
 
 defineProps<{
+  /** Имя игрока. */
+  name: string
   authority: number
   /** Сейчас ваш ход. */
   active: boolean
@@ -14,7 +16,7 @@ defineProps<{
 </script>
 
 <template>
-  <section class="panel" :class="{ 'panel--active': active }" aria-label="Вы">
+  <section class="panel" :class="{ 'panel--active': active }" :aria-label="`Вы: ${name}`">
     <span class="panel__corner panel__corner--tl" />
     <span class="panel__corner panel__corner--br" />
     <div class="panel__who">
@@ -22,8 +24,8 @@ defineProps<{
         <AppIcon :name="ICON.USER" :size="30" :stroke="1.5" />
       </div>
       <div class="panel__info">
-        <p class="panel__name">
-          Вы
+        <p class="panel__name" :title="name">
+          {{ name }}
         </p>
         <p class="panel__status" :class="{ 'panel__status--offline': !online }">
           <span class="panel__dot" />
@@ -87,6 +89,7 @@ defineProps<{
   display: flex;
   align-items: center;
   gap: 12px;
+  min-width: 0;
 }
 
 .panel__avatar {
@@ -106,10 +109,14 @@ defineProps<{
   display: flex;
   flex-direction: column;
   gap: 7px;
+  min-width: 0;
 }
 
 .panel__name {
-  font: 600 17px/1 var(--font-text);
+  overflow: hidden;
+  font: 600 17px/1.2 var(--font-text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .panel__status {

@@ -4,14 +4,17 @@
  * ведёт AnimationDirector; сам компонент только соединяет их с разметкой и передаёт намерения игрока в команды.
  */
 import type { Command } from '@space/engine'
+import type { EndReason } from '@space/protocol'
 import type { PileId } from '../modules/board'
-import type { Unspent } from '../modules/hud'
+import type { RematchStatus, Unspent } from '../modules/hud'
 import type { MatchTransport } from '../store/match-store'
 import { COMMAND_TYPE, PROMPT_KIND } from '@space/engine'
 import { useEventListener, useMediaQuery } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 import StageScaler from '@/common/ui/StageScaler.vue'
+import { HelpDialog } from '@/modules/help'
+import { motionFactor, SettingsDialog, useSettings } from '@/modules/settings'
 import { Board, NODE_GROUP, PILE_ID } from '../modules/board'
 import { EndTurnDialog, GameOverScreen, HudLayer, itemsFromCards, itemsFromContents, PileViewer, unspentResources } from '../modules/hud'
 import { PromptHost } from '../modules/prompts'
@@ -25,24 +28,37 @@ const props = defineProps<{
   opponentOnline: boolean
   /** Момент (Date.now()), когда отключившемуся сопернику засчитают сдачу; null, пока он на связи. */
   opponentReturnDeadline: number | null
+  /** Имена игроков: ваше и соперника. */
+  names: { self: string, opponent: string }
+  /** Почему партия закончилась; null, пока она идёт. */
+  endReason: EndReason | null
+  /** Предложения реванша после конца партии. */
+  rematch: RematchStatus
 }>()
 
-const emit = defineEmits<{ leave: [] }>()
+const emit = defineEmits<{
+  leave: []
+  /** Предложить реванш или принять предложение соперника. */
+  rematch: []
+}>()
 
 const store = useMatchStore()
 const { table, legalIndex, interactive, busy, speed, log, fx, banner, toast, deadline, timerTotal, selectedCardIds } = storeToRefs(store)
 
 const board = useTemplateRef<InstanceType<typeof Board>>('board')
 
-// Ввод и анимации идут в одной сцене; при prefers-reduced-motion переходы сжимаются почти в ноль.
+// Ввод и анимации идут в одной сцене. Скорость задают настройки игрока, а при сокращённых анимациях
+// (в настройках или prefers-reduced-motion) переходы сжимаются почти в ноль.
+const settings = useSettings()
 const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
-const layerSpeed = computed(() => speed.value * (reducedMotion.value ? 20 : 1))
+const motionScale = computed(() => motionFactor(settings.value, reducedMotion.value))
+const layerSpeed = computed(() => speed.value * motionScale.value)
 
 store.attach(props.transport, {
   setMotion: motion => board.value?.setMotion(motion),
   snapNext: () => board.value?.snapNext(),
   settled: () => board.value?.settled() ?? Promise.resolve(),
-})
+}, () => motionScale.value)
 
 onMounted(() => store.start())
 onBeforeUnmount(() => store.detach())
@@ -74,13 +90,7 @@ const gameOver = computed(() => {
   const state = table.value
   if (!state || state.winner === null || busy.value)
     return null
-  const win = state.winner === state.you
-  const loser = win ? state.opponent : state.self
-  return {
-    win,
-    turn: state.turn,
-    conceded: loser.authority > 0,
-  }
+  return { win: state.winner === state.you, turn: state.turn }
 })
 
 const showGameOver = computed(() => gameOver.value !== null && !hideGameOver.value)
@@ -101,16 +111,20 @@ function attackPlayer(amount: number): void {
 const endTurnWarning = ref<Unspent | null>(null)
 
 function requestEndTurn(): void {
-  const unspent = table.value ? unspentResources(table.value.pools, legalIndex.value) : null
+  const unspent = table.value && settings.value.endTurnWarning ? unspentResources(table.value.pools, legalIndex.value) : null
   if (unspent)
     endTurnWarning.value = unspent
   else
     run({ type: COMMAND_TYPE.END_TURN })
 }
 
+const settingsOpen = ref(false)
+const helpOpen = ref(false)
+
 /*
- * Горячие клавиши хода: P - разыграть все, A - атаковать, E - конец хода. Работают по физическому положению
- * клавиши (code), поэтому не зависят от раскладки. Отключены, пока открыто окно (запрос, стопка, предупреждение).
+ * Горячие клавиши: ? и F1 - справка; P - разыграть все, A - атаковать, E - конец хода (их можно выключить в
+ * настройках). Ход работает по физическому положению клавиши (code), поэтому не зависит от раскладки.
+ * Все отключены, пока открыто окно (запрос, стопка, предупреждение, настройки).
  */
 useEventListener(window, 'keydown', (event: KeyboardEvent) => {
   if (event.repeat || event.ctrlKey || event.metaKey || event.altKey)
@@ -118,7 +132,14 @@ useEventListener(window, 'keydown', (event: KeyboardEvent) => {
   const target = event.target
   if (target instanceof HTMLElement && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)))
     return
-  if (!table.value || table.value.winner !== null || !interactive.value || document.querySelector('[role="dialog"]'))
+  if (document.querySelector('[role="dialog"]'))
+    return
+  if (event.key === '?' || event.code === 'F1') {
+    helpOpen.value = true
+    event.preventDefault()
+    return
+  }
+  if (!settings.value.hotkeys || !table.value || table.value.winner !== null || !interactive.value)
     return
   const legal = legalIndex.value
   if (event.code === 'KeyP' && !store.playingAll && store.playableCount > 0)
@@ -173,6 +194,8 @@ watch(pending, () => {
         :fx="fx"
         :banner="banner"
         :online="online"
+        :self-name="names.self"
+        :opponent-name="names.opponent"
         :opponent-online="opponentOnline"
         :opponent-return-deadline="opponentReturnDeadline"
         :play-all-count="store.playingAll ? 0 : store.playableCount"
@@ -180,6 +203,8 @@ watch(pending, () => {
         @end-turn="requestEndTurn"
         @play-all="store.playAll()"
         @concede="run({ type: COMMAND_TYPE.CONCEDE })"
+        @settings="settingsOpen = true"
+        @help="helpOpen = true"
       />
 
       <Board
@@ -189,6 +214,7 @@ watch(pending, () => {
         :interactive="interactive"
         :selected-card-ids="selectedCardIds"
         :speed="layerSpeed"
+        :drag-enabled="settings.dragAndDrop"
         @command="run"
         @select="store.select"
         @view-pile="viewedPile = $event"
@@ -212,11 +238,18 @@ watch(pending, () => {
 
       <PileViewer v-if="viewedPileData" :title="viewedPileData.title" :items="viewedPileData.items" :note="viewedPileData.note" @close="viewedPile = null" />
 
+      <SettingsDialog v-if="settingsOpen" @close="settingsOpen = false" />
+      <HelpDialog v-if="helpOpen" @close="helpOpen = false" />
+
       <GameOverScreen
         v-if="gameOver && showGameOver"
         :win="gameOver.win"
         :turn="gameOver.turn"
-        :conceded="gameOver.conceded"
+        :reason="endReason"
+        :self-name="names.self"
+        :opponent-name="names.opponent"
+        :rematch="rematch"
+        @rematch="emit('rematch')"
         @new-match="emit('leave')"
         @view-field="hideGameOver = true"
       />

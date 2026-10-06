@@ -4,10 +4,12 @@ import { computed } from 'vue'
 import { useTick } from '@/common/composables/useTick'
 import AppIcon from '@/common/ui/AppIcon.vue'
 import { ICON } from '@/common/ui/icons'
-import { formatClock } from '../lib/turn-info'
+import { formatClock } from '@/common/utilities/clock'
 import FxFloat from './FxFloat.vue'
 
 const props = defineProps<{
+  /** Имя соперника. */
+  name: string
   authority: number
   handCount: number
   /** Сейчас ход соперника. */
@@ -34,7 +36,7 @@ const returnClock = computed(() => {
 </script>
 
 <template>
-  <section class="panel" :class="{ 'panel--active': active }" aria-label="Соперник">
+  <section class="panel" :class="{ 'panel--active': active }" :aria-label="`Соперник: ${name}`">
     <span class="panel__corner" />
     <!-- Атаковать соперника можно кликом по аватару: это та же команда, что и кнопка «Атаковать» в панели хода. -->
     <button
@@ -42,15 +44,15 @@ const returnClock = computed(() => {
       class="panel__avatar"
       :class="{ 'panel__avatar--target': attackAmount > 0 }"
       :disabled="attackAmount === 0"
-      :aria-label="attackAmount > 0 ? `Атаковать соперника: ${attackAmount}` : 'Соперник'"
+      :aria-label="attackAmount > 0 ? `Атаковать соперника ${name}: ${attackAmount}` : `Соперник: ${name}`"
       @click="$emit('attack')"
     >
       <AppIcon :name="attackAmount > 0 ? ICON.COMBAT : ICON.USER" :size="26" :stroke="attackAmount > 0 ? 2 : 1.5" />
     </button>
     <div class="panel__info">
-      <p class="panel__name">
+      <p class="panel__name" :title="name">
         <span class="panel__dot" :class="{ 'panel__dot--offline': !online }" aria-hidden="true" />
-        <span>Соперник</span>
+        <span>{{ name }}</span>
         <span class="visually-hidden">{{ online ? ', на связи' : ', нет связи' }}</span>
       </p>
       <p class="panel__sub">
@@ -164,7 +166,10 @@ const returnClock = computed(() => {
 }
 
 .panel__name {
-  font: 600 15px/1 var(--font-text);
+  overflow: hidden;
+  font: 600 15px/1.2 var(--font-text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .panel__sub {

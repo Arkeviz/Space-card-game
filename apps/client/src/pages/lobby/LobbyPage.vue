@@ -1,13 +1,18 @@
 <script setup lang="ts">
 import type { MatchError } from '@space/protocol'
 import { MATCH_ERROR } from '@space/protocol'
-import { computed, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useGameConnection } from '@/modules/connection'
+import { HelpDialog } from '@/modules/help'
 import { LobbyScreen, WaitingScreen } from '@/modules/lobby'
+import { DEFAULT_PLAYER_NAME, playerNameOf, SettingsDialog, useSettings } from '@/modules/settings'
 
 const connection = useGameConnection()
 const router = useRouter()
+const settings = useSettings()
+const settingsOpen = ref(false)
+const helpOpen = ref(false)
 
 const ERROR_TEXT: Record<MatchError, string> = {
   [MATCH_ERROR.NOT_FOUND]: 'Матч с таким кодом не найден.',
@@ -20,28 +25,45 @@ const ERROR_TEXT: Record<MatchError, string> = {
 
 const connected = computed(() => connection.online.value)
 const error = computed(() => (connection.state.lastError ? ERROR_TEXT[connection.state.lastError] : null))
-const waiting = computed(() => connection.state.matchId !== null && !connection.state.opponentConnected)
+const searching = computed(() => connection.state.searching)
+// Создатель ждёт, пока кто-то войдёт по коду, либо идёт быстрый поиск (кода у него нет).
+const waiting = computed(() => searching.value || (connection.state.matchId !== null && !connection.state.opponentConnected))
 
 // Игра стартует, как только приходит первый update (оба игрока на месте) - переходим на экран матча.
 watch(() => connection.state.view, (view) => {
   if (view && connection.state.matchId)
     router.push(`/match/${connection.state.matchId}`)
 })
+
+function cancelWaiting(): void {
+  if (searching.value)
+    connection.cancelSearch()
+  else
+    connection.leaveMatch()
+}
 </script>
 
 <template>
   <WaitingScreen
-    v-if="waiting && connection.state.code"
-    :code="connection.state.code"
+    v-if="waiting"
+    :code="searching ? null : connection.state.code"
     :connected="connected"
-    @cancel="connection.leaveMatch()"
+    @cancel="cancelWaiting"
   />
   <LobbyScreen
     v-else
+    v-model:name="settings.playerName"
+    :default-name="DEFAULT_PLAYER_NAME"
     :connected="connected"
     :error="error"
-    @create="connection.createMatch()"
-    @join="connection.joinMatch($event)"
+    @quick="connection.findMatch(playerNameOf(settings))"
+    @create="connection.createMatch(playerNameOf(settings))"
+    @join="connection.joinMatch($event, playerNameOf(settings))"
     @catalog="router.push('/cards')"
-  />
+    @settings="settingsOpen = true"
+    @help="helpOpen = true"
+  >
+    <SettingsDialog v-if="settingsOpen" @close="settingsOpen = false" />
+    <HelpDialog v-if="helpOpen" @close="helpOpen = false" />
+  </LobbyScreen>
 </template>

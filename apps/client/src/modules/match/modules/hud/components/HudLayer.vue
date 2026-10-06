@@ -29,6 +29,8 @@ const props = defineProps<{
   fx: FxItem[]
   banner: TurnBanner | null
   online: boolean
+  selfName: string
+  opponentName: string
   opponentOnline: boolean
   opponentReturnDeadline: number | null
   playAllCount: number
@@ -39,6 +41,8 @@ const emit = defineEmits<{
   endTurn: []
   playAll: []
   concede: []
+  settings: []
+  help: []
 }>()
 
 const mine = computed(() => props.table.currentPlayer === props.table.you)
@@ -56,6 +60,7 @@ const hint = computed(() => hintFor(props.table, props.legal))
   <div class="hud">
     <div class="hud__slot" :style="rectStyle(RECT.OPP_PANEL)">
       <OpponentPanel
+        :name="opponentName"
         :authority="table.opponent.authority"
         :hand-count="table.opponent.handCount"
         :active="!mine"
@@ -91,11 +96,11 @@ const hint = computed(() => hintFor(props.table, props.legal))
     </div>
 
     <div class="hud__slot" :style="rectStyle(RECT.SELF_PANEL)">
-      <SelfPanel :authority="table.self.authority" :active="mine" :online="online" :fx="selfFx" />
+      <SelfPanel :name="selfName" :authority="table.self.authority" :active="mine" :online="online" :fx="selfFx" />
     </div>
 
     <div class="hud__menu">
-      <MatchMenu @concede="emit('concede')" />
+      <MatchMenu @concede="emit('concede')" @settings="emit('settings')" @help="emit('help')" />
     </div>
 
     <TurnBannerView :banner="banner" />

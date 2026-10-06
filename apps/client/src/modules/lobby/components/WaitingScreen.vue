@@ -1,21 +1,31 @@
 <script setup lang="ts">
 import { useClipboard } from '@vueuse/core'
 import { computed } from 'vue'
+import { useTick } from '@/common/composables/useTick'
 import AppIcon from '@/common/ui/AppIcon.vue'
 import GameButton from '@/common/ui/GameButton.vue'
 import { ICON } from '@/common/ui/icons'
 import StageScaler from '@/common/ui/StageScaler.vue'
+import { formatElapsed } from '@/common/utilities/clock'
 import OrbitDecor from './OrbitDecor.vue'
 
+/**
+ * Экран ожидания соперника. С кодом - матч создан, код нужно отправить второму игроку; без кода (null) - идёт
+ * быстрый поиск, соперника подберёт сервер.
+ */
 const props = defineProps<{
-  code: string
+  code: string | null
   connected: boolean
 }>()
 
 const emit = defineEmits<{ cancel: [] }>()
 
 const { copy, copied } = useClipboard({ copiedDuring: 2000 })
-const chars = computed(() => props.code.split(''))
+const chars = computed(() => (props.code ?? '').split(''))
+
+const startedAt = Date.now()
+const now = useTick(1000)
+const elapsed = computed(() => formatElapsed(now.value.getTime() - startedAt))
 </script>
 
 <template>
@@ -30,16 +40,16 @@ const chars = computed(() => props.code.split(''))
 
       <div class="wait__column">
         <p class="wait__eyebrow">
-          МАТЧ СОЗДАН
+          {{ code ? 'МАТЧ СОЗДАН' : 'БЫСТРАЯ ИГРА' }}
         </p>
         <h1 class="wait__title">
-          Ждём соперника
+          {{ code ? 'Ждём соперника' : 'Ищем соперника' }}
         </h1>
         <p class="wait__lead">
-          Отправьте код второму игроку. Партия начнётся сама, как только он войдёт.
+          {{ code ? 'Отправьте код второму игроку. Партия начнётся сама, как только он войдёт.' : 'Партия начнётся сама, как только найдётся второй игрок.' }}
         </p>
 
-        <div class="wait__code-block">
+        <div v-if="code" class="wait__code-block">
           <p class="wait__label">
             КОД МАТЧА
           </p>
@@ -59,9 +69,14 @@ const chars = computed(() => props.code.split(''))
             </p>
           </div>
         </div>
+        <p v-else class="wait__search" role="status">
+          <span class="wait__pulse" />
+          <span>Поиск соперника</span>
+          <span class="wait__elapsed">{{ elapsed }}</span>
+        </p>
 
         <div class="wait__foot">
-          <p class="wait__note">
+          <p v-if="code" class="wait__note">
             <AppIcon :name="ICON.INFO" :size="16" />
             <span>Код перестаёт действовать, как только соперник займёт место.</span>
           </p>
@@ -182,6 +197,21 @@ const chars = computed(() => props.code.split(''))
   gap: 10px;
   color: var(--c-text-soft);
   font: 400 16px/1 var(--font-text);
+}
+
+.wait__search {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 10px;
+  color: var(--c-text-soft);
+  font: 400 20px/1 var(--font-text);
+}
+
+.wait__elapsed {
+  color: var(--c-text-strong);
+  font: 600 20px/1 var(--font-mono);
+  letter-spacing: 0.08em;
 }
 
 .wait__pulse {

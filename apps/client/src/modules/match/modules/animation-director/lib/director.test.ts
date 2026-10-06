@@ -93,6 +93,29 @@ describe('animationDirector', () => {
     expect(longest(waits.own!)).toBeLessThan(longest(waits.normal!))
   })
 
+  it('настройка скорости анимаций делит паузы между шагами и читается на каждом шаге', async () => {
+    const waits: Record<string, number[]> = { slow: [], fast: [] }
+    const factors = { slow: 0.5, fast: 2 }
+    for (const mode of ['slow', 'fast'] as const) {
+      const t = setup()
+      const director = new AnimationDirector({ ...t.host, speedFactor: () => factors[mode], wait: (ms) => {
+        waits[mode]!.push(ms)
+        return Promise.resolve()
+      } })
+      const state0 = createGame(11, { firstPlayer: 0 })
+      director.snapTo(updateFrom(state0, 0, []))
+      const result = apply(state0, 0, { type: COMMAND_TYPE.END_TURN })
+      if (!result.ok)
+        throw new Error('END_TURN отклонён')
+      director.enqueue(updateFrom(result.state, 0, result.events))
+      await new Promise(resolve => setTimeout(resolve, 10))
+    }
+    // 4000 мс - аварийный таймаут шага, он от скорости не зависит.
+    const longest = (list: number[]): number => Math.max(...list.filter(ms => ms < 4000))
+    // Пауза пропорциональна 1 / factor: при 0.5 она в четыре раза длиннее, чем при 2.
+    expect(longest(waits.slow!)).toBeCloseTo(longest(waits.fast!) * 4)
+  })
+
   it('второй update ждёт, пока доиграет первый', async () => {
     const t = setup()
     const director = new AnimationDirector(t.host)

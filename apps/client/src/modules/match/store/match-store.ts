@@ -156,11 +156,12 @@ export const useMatchStore = defineStore('match', () => {
   }
 
   /** Подключает матч. Вызывается в setup экрана; анимации начинаются в start(), когда слой карт смонтирован. */
-  function attach(next: MatchTransport, stage: DirectorStage<Motion>): void {
+  function attach(next: MatchTransport, stage: DirectorStage<Motion>, speedFactor?: () => number): void {
     detach()
     transport = next
     director = new AnimationDirector<Motion>({
       stage,
+      speedFactor,
       getTable: () => table.value,
       setTable: (value) => {
         table.value = value

@@ -61,10 +61,3 @@ export function hintFor(table: TableState, legal: LegalIndex): Hint {
     return { icon: ICON.LOCK, color: 'var(--c-text-quiet)', text: `Ваш аванпост «${own}» прикрывает вас и ваши базы` }
   return { icon: ICON.COMBAT, color: 'var(--c-combat)', text: 'У вас нет аванпостов: соперник может атаковать вас или ваши базы' }
 }
-
-export function formatClock(ms: number): string {
-  const total = Math.max(0, Math.ceil(ms / 1000))
-  const minutes = Math.floor(total / 60)
-  const seconds = total % 60
-  return `${minutes}:${seconds.toString().padStart(2, '0')}`
-}

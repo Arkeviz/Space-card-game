@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { PLAYER_NAME_MAX_LENGTH } from '@space/protocol'
 import { computed, ref } from 'vue'
 import AppIcon from '@/common/ui/AppIcon.vue'
 import GameButton from '@/common/ui/GameButton.vue'
@@ -11,13 +12,21 @@ const props = defineProps<{
   connected: boolean
   /** Текст ошибки последней попытки (неверный код и т. п.). */
   error: string | null
+  /** Как показывать имя, если игрок его не ввёл (подсказка в поле). */
+  defaultName: string
 }>()
 
 const emit = defineEmits<{
+  quick: []
   create: []
   join: [code: string]
   catalog: []
+  settings: []
+  help: []
 }>()
+
+/** Имя игрока: оно уходит соперникам и показывается в партии. */
+const name = defineModel<string>('name', { required: true })
 
 const CODE_LENGTH = 6
 const code = ref('')
@@ -47,20 +56,44 @@ function submit(): void {
         </p>
 
         <div class="lobby__controls">
+          <label class="lobby__name-field" for="player-name">
+            <span class="lobby__label">ВАШЕ ИМЯ</span>
+            <input
+              id="player-name"
+              v-model="name"
+              class="lobby__name"
+              type="text"
+              :maxlength="PLAYER_NAME_MAX_LENGTH"
+              autocomplete="nickname"
+              spellcheck="false"
+              :placeholder="defaultName"
+            >
+          </label>
+
           <div class="lobby__create">
-            <GameButton class="lobby__create-button" :height="68" :disabled="!connected" @click="emit('create')">
-              <AppIcon :name="ICON.PLUS" :size="20" :stroke="2.6" />
-              <span>Создать матч</span>
+            <GameButton class="lobby__create-button" :height="68" :disabled="!connected" @click="emit('quick')">
+              <AppIcon :name="ICON.USER" :size="20" :stroke="2.2" />
+              <span>Быстрая игра</span>
             </GameButton>
             <p class="lobby__hint">
-              Вы получите код из 6 символов - отправьте его сопернику.
+              Подберём соперника автоматически.
             </p>
           </div>
 
           <div class="lobby__or">
             <span class="lobby__or-line" />
-            <span>ИЛИ</span>
+            <span>ИЛИ С ДРУГОМ</span>
             <span class="lobby__or-line" />
+          </div>
+
+          <div class="lobby__create">
+            <GameButton class="lobby__create-button" variant="outline" :height="56" :disabled="!connected" @click="emit('create')">
+              <AppIcon :name="ICON.PLUS" :size="18" :stroke="2.6" />
+              <span>Создать матч</span>
+            </GameButton>
+            <p class="lobby__hint">
+              Вы получите код из 6 символов - отправьте его сопернику.
+            </p>
           </div>
 
           <form class="lobby__join" @submit.prevent="submit">
@@ -90,16 +123,29 @@ function submit(): void {
           </form>
         </div>
 
-        <button type="button" class="lobby__catalog" @click="emit('catalog')">
-          <AppIcon :name="ICON.COPY" :size="18" :stroke="1.8" />
-          <span>КАТАЛОГ КАРТ</span>
-        </button>
+        <div class="lobby__links">
+          <button type="button" class="lobby__link" @click="emit('catalog')">
+            <AppIcon :name="ICON.COPY" :size="18" :stroke="1.8" />
+            <span>КАТАЛОГ КАРТ</span>
+          </button>
+          <button type="button" class="lobby__link" @click="emit('settings')">
+            <AppIcon :name="ICON.MENU" :size="18" :stroke="1.8" />
+            <span>НАСТРОЙКИ</span>
+          </button>
+          <button type="button" class="lobby__link" @click="emit('help')">
+            <AppIcon :name="ICON.INFO" :size="18" :stroke="1.8" />
+            <span>СПРАВКА</span>
+          </button>
+        </div>
       </div>
 
       <p class="lobby__status" :class="{ 'lobby__status--off': !connected }" role="status">
         <span class="lobby__dot" />
         <span>{{ connected ? 'СЕРВЕР · ПОДКЛЮЧЕНО' : 'СЕРВЕР · НЕТ СВЯЗИ' }}</span>
       </p>
+
+      <!-- Окна (настройки, справка) рисуются внутри сцены, чтобы масштабироваться вместе с ней. -->
+      <slot />
     </main>
   </StageScaler>
 </template>
@@ -121,16 +167,21 @@ function submit(): void {
   left: 160px;
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  gap: 24px;
   justify-content: center;
   width: 760px;
 }
 
-.lobby__catalog {
+.lobby__links {
+  display: flex;
+  gap: 12px;
+  align-self: flex-start;
+}
+
+.lobby__link {
   display: flex;
   gap: 10px;
   align-items: center;
-  align-self: flex-start;
   height: 44px;
   margin: 0;
   padding: 0 20px 0 16px;
@@ -143,7 +194,7 @@ function submit(): void {
   cursor: pointer;
 }
 
-.lobby__catalog:hover {
+.lobby__link:hover {
   color: var(--c-me);
   box-shadow: inset 0 0 0 1px var(--c-me);
 }
@@ -178,9 +229,38 @@ function submit(): void {
 .lobby__controls {
   display: flex;
   flex-direction: column;
-  gap: 22px;
+  gap: 18px;
   width: 560px;
-  margin-top: 20px;
+  margin-top: 8px;
+}
+
+.lobby__name-field {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.lobby__name {
+  flex: none;
+  width: 100%;
+  min-width: 0;
+  height: 52px;
+  margin: 0;
+  padding: 0 20px;
+  border: 0;
+  background: var(--c-surface-raised);
+  color: var(--c-text-strong);
+  font: 600 20px/1 var(--font-text);
+  box-shadow: inset 0 0 0 1px rgba(143, 163, 200, 0.35);
+  outline: none;
+}
+
+.lobby__name:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--c-me);
+}
+
+.lobby__name::placeholder {
+  color: rgba(143, 163, 200, 0.45);
 }
 
 .lobby__create {

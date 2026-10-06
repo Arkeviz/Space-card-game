@@ -60,8 +60,9 @@ import { Board } from '@/modules/match/modules/board/Board.vue'
 
 Подключение к серверу матчей: обёртка над `useWebSocket` из VueUse по протоколу `@space/protocol`.
 
-- `lib/connection-state.ts` - класс `ConnectionState`: применяет входящие сообщения сервера (JOINED/UPDATE/ACK/REJECT/ERROR),
-  отслеживает команды, ждущие ack/reject. Не знает ни о WebSocket, ни о Vue - юнит-тестируется напрямую (как
+- `lib/connection-state.ts` - класс `ConnectionState`: применяет входящие сообщения сервера (JOINED/UPDATE/ACK/REJECT/ERROR,
+  OPPONENT_STATUS, SEARCH_STATUS, REMATCH_STATUS), отслеживает команды, ждущие ack/reject; хранит имена игроков, причину конца
+  партии, состояние поиска и реванша. JOINED с другим `matchId` (реванш) забывает прошлую партию, не трогая подписчиков. Не знает ни о WebSocket, ни о Vue - юнит-тестируется напрямую (как
   `MatchManager` в `apps/server`), без моков сети и без jsdom.
 - `composables/useGameConnection.ts` - тонкая обвязка: `useWebSocket` (heartbeat, автопереподключение),
   `reactive(new ConnectionState())`, переподключение по токену из `sessionStorage` (не `localStorage` - он общий
@@ -71,6 +72,20 @@ wsUrl передаётся параметром (`createGameConnection(wsUrl)`),
 нарушило бы границы FEOD (`modules` не импортирует `app`). Собирает всё воедино `app/entry.ts`:
 `provideGameConnection(app, appConfig.wsUrl)` один раз при старте, дальше подключение получают через
 `useGameConnection()` (Vue `provide`/`inject`).
+
+Имя игрока (`createMatch(name)`, `joinMatch(code, name)`, `findMatch(name)`) берётся страницей лобби из настроек; `leaveMatch()` шлёт
+серверу `leave-match`, иначе следующий `create-match` с того же сокета получил бы `already-in-match`.
+
+## Модули `settings` и `help`
+
+- `modules/settings` - настройки игрока: чистая логика в `lib/settings.ts` (`parseSettings` проверяет каждое поле отдельно и откатывает
+  испорченное к значению по умолчанию, `motionFactor` считает множитель скорости анимаций), одно общее реактивное хранилище в
+  `composables/useSettings.ts` (`useStorage`, localStorage, ключ `space-card-game:settings`), окно `SettingsDialog`. Имя игрока
+  вводится в лобби (поле «Ваше имя»), в окне настроек его нет.
+- `modules/help` - окно справки `HelpDialog`; содержимое (правила и таблица управления) - данными в `lib/help-content.ts`.
+
+Окна на `AppDialog` рисуются внутри сцены (масштабируются вместе с ней): лобби отдаёт им слот, экран матча - свою разметку.
+Открываются кнопками «Настройки» и «Справка» в лобби, пунктами меню матча и клавишами `?` / F1.
 
 ## Экран матча
 
@@ -84,4 +99,6 @@ pnpm --filter @space/client build      # vue-tsc + vite build
 pnpm --filter @space/client typecheck  # vue-tsc --noEmit
 ```
 
-URL WebSocket-сервера задаётся переменной `VITE_WS_URL` (по умолчанию `ws://localhost:3001/ws`).
+URL WebSocket-сервера (`app/app-config.ts`): переменная `VITE_WS_URL`, если задана; при разработке - `ws://localhost:3001/ws`;
+в собранном приложении - тот же хост, с которого открыта страница (`ws://` или `wss://` по протоколу страницы). В Docker `/ws`
+проксирует nginx (`nginx.conf`), поэтому ничего настраивать не нужно. Образ клиента собирает `Dockerfile` (Vite -> nginx).

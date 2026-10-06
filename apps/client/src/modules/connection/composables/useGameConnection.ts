@@ -56,12 +56,18 @@ export interface GameConnection {
   status: ReturnType<typeof useWebSocket>['status']
   /** Соединение с сервером открыто. */
   online: ComputedRef<boolean>
-  createMatch: () => void
-  joinMatch: (code: string) => void
+  /** Имя игрока (1-20 символов) передаётся при создании, входе и поиске: сервер показывает его сопернику. */
+  createMatch: (name: string) => void
+  joinMatch: (code: string, name: string) => void
+  /** Быстрый поиск: сервер сведёт с первым же ждущим соперником. */
+  findMatch: (name: string) => void
+  cancelSearch: () => void
+  /** Предложить реванш (или принять предложение соперника). */
+  requestRematch: () => void
   /** Разрешается ack'ом ({ ok: true }) или reject'ом/разрывом связи ({ ok: false, reason }). */
   submitCommand: (command: Command) => Promise<CommandResult>
   sync: () => void
-  /** Покинуть матч и вернуться в состояние лобби. */
+  /** Покинуть матч (в идущей партии - сдача) и вернуться в состояние лобби. */
   leaveMatch: () => void
   /** Подписка на каждый update с событиями (в отличие от state.view, который хранит только последний). Возвращает отписку. */
   onUpdate: (listener: UpdateListener) => () => void
@@ -112,7 +118,7 @@ export function createGameConnection(wsUrl: string): GameConnection {
     },
     onMessage: (_ws, event) => handleMessage(event.data as string),
     // Разрыв связи: команды, для которых ack/reject мог не дойти, не должны зависать вечно.
-    onDisconnected: () => state.rejectAllPending(),
+    onDisconnected: () => state.handleDisconnected(),
   })
 
   watch(() => state.view?.winner, (winner) => {
@@ -124,8 +130,18 @@ export function createGameConnection(wsUrl: string): GameConnection {
     state,
     status: socket.status,
     online: computed(() => socket.status.value === 'OPEN'),
-    createMatch: () => send({ type: CLIENT_MESSAGE.CREATE_MATCH }),
-    joinMatch: code => send({ type: CLIENT_MESSAGE.JOIN_MATCH, code }),
+    createMatch: name => send({ type: CLIENT_MESSAGE.CREATE_MATCH, name }),
+    joinMatch: (code, name) => send({ type: CLIENT_MESSAGE.JOIN_MATCH, code, name }),
+    findMatch: (name) => {
+      // Состояние выставляется сразу, не дожидаясь ответа сервера: кнопка и экран ожидания не должны мигать.
+      state.searching = true
+      send({ type: CLIENT_MESSAGE.FIND_MATCH, name })
+    },
+    cancelSearch: () => {
+      state.searching = false
+      send({ type: CLIENT_MESSAGE.CANCEL_SEARCH })
+    },
+    requestRematch: () => send({ type: CLIENT_MESSAGE.REMATCH }),
     submitCommand: command => new Promise<CommandResult>((resolve) => {
       const commandId = crypto.randomUUID()
       state.registerPending(commandId, resolve)
@@ -133,6 +149,8 @@ export function createGameConnection(wsUrl: string): GameConnection {
     }),
     sync: () => send({ type: CLIENT_MESSAGE.SYNC }),
     leaveMatch: () => {
+      // Сервер должен освободить место: иначе следующее создание матча с этого сокета получит already-in-match.
+      send({ type: CLIENT_MESSAGE.LEAVE_MATCH })
       state.leave()
       writeStoredReconnect(null)
     },

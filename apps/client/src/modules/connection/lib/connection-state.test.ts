@@ -1,7 +1,7 @@
 import type { PlayerView } from '@space/engine'
 import type { UpdateMessage } from '@space/protocol'
 import { COMMAND_TYPE } from '@space/engine'
-import { MATCH_ERROR, SERVER_MESSAGE } from '@space/protocol'
+import { END_REASON, MATCH_ERROR, SERVER_MESSAGE } from '@space/protocol'
 import { describe, expect, it, vi } from 'vitest'
 import { ConnectionState } from './connection-state'
 
@@ -20,6 +20,8 @@ const view: PlayerView = {
   scrapHeap: [],
   prompt: null,
 }
+
+const names: [string, string] = ['Алиса', 'Боб']
 
 describe('connectionState.handleServerMessage', () => {
   it('joined заполняет данные матча и возвращает секрет для переподключения', () => {
@@ -56,6 +58,8 @@ describe('connectionState.handleServerMessage', () => {
       view,
       legalActions: [{ type: COMMAND_TYPE.END_TURN }],
       turnTimeLeftMs: 90_000,
+      names,
+      endReason: null,
     })
     expect(info).toBeNull()
     expect(state.view).toBe(view)
@@ -68,7 +72,7 @@ describe('connectionState.handleServerMessage', () => {
     const state = new ConnectionState()
     const listener = vi.fn()
     const unsubscribe = state.subscribeUpdates(listener)
-    const update: UpdateMessage = { type: SERVER_MESSAGE.UPDATE, version: 2, events: [], view, legalActions: [], turnTimeLeftMs: 5000 }
+    const update: UpdateMessage = { type: SERVER_MESSAGE.UPDATE, version: 2, events: [], view, legalActions: [], turnTimeLeftMs: 5000, names, endReason: null }
     state.handleServerMessage(update)
     expect(listener).toHaveBeenCalledExactlyOnceWith(update)
     expect(state.turnTimeLeftMs).toBe(5000)
@@ -81,7 +85,7 @@ describe('connectionState.handleServerMessage', () => {
   it('leave забывает матч и разрешает ожидающие команды как потерянные', () => {
     const state = new ConnectionState()
     state.handleServerMessage({ type: SERVER_MESSAGE.JOINED, matchId: 'm1', code: 'ABC123', you: 0, token: 't1', opponentConnected: true })
-    state.handleServerMessage({ type: SERVER_MESSAGE.UPDATE, version: 1, events: [], view, legalActions: [], turnTimeLeftMs: null })
+    state.handleServerMessage({ type: SERVER_MESSAGE.UPDATE, version: 1, events: [], view, legalActions: [], turnTimeLeftMs: null, names, endReason: null })
     const resolve = vi.fn()
     state.registerPending('cmd-1', resolve)
 
@@ -149,7 +153,7 @@ describe('connectionState: ожидающие команды', () => {
 })
 
 describe('connectionState: статус соперника и удаление комнаты', () => {
-  const update: UpdateMessage = { type: SERVER_MESSAGE.UPDATE, version: 1, events: [], view, legalActions: [], turnTimeLeftMs: null }
+  const update: UpdateMessage = { type: SERVER_MESSAGE.UPDATE, version: 1, events: [], view, legalActions: [], turnTimeLeftMs: null, names, endReason: null }
 
   it('opponent-status запоминает отключение и отсчёт до сдачи, update их не затирает', () => {
     const state = new ConnectionState()
@@ -176,5 +180,80 @@ describe('connectionState: статус соперника и удаление �
     expect(state.matchId).toBeNull()
     expect(state.code).toBeNull()
     expect(state.lastError).toBe(MATCH_ERROR.EXPIRED)
+  })
+})
+
+describe('connectionState: имена и причина конца партии', () => {
+  it('update запоминает имена и причину конца, leave их забывает', () => {
+    const state = new ConnectionState()
+    state.handleServerMessage({ type: SERVER_MESSAGE.UPDATE, version: 1, events: [], view, legalActions: [], turnTimeLeftMs: null, names, endReason: END_REASON.IDLE })
+    expect(state.names).toEqual(['Алиса', 'Боб'])
+    expect(state.endReason).toBe(END_REASON.IDLE)
+
+    state.leave()
+    expect(state.names).toEqual(['', ''])
+    expect(state.endReason).toBeNull()
+  })
+})
+
+describe('connectionState: быстрый поиск', () => {
+  it('search-status включает и выключает ожидание, joined его завершает', () => {
+    const state = new ConnectionState()
+    state.handleServerMessage({ type: SERVER_MESSAGE.SEARCH_STATUS, searching: true })
+    expect(state.searching).toBe(true)
+
+    state.handleServerMessage({ type: SERVER_MESSAGE.JOINED, matchId: 'm1', code: 'ABC123', you: 1, token: 't1', opponentConnected: true })
+    expect(state.searching).toBe(false)
+  })
+
+  it('обрыв связи прекращает поиск: очередь на сервере потеряна', () => {
+    const state = new ConnectionState()
+    state.handleServerMessage({ type: SERVER_MESSAGE.SEARCH_STATUS, searching: true })
+    const resolve = vi.fn()
+    state.registerPending('cmd-1', resolve)
+
+    state.handleDisconnected()
+    expect(state.searching).toBe(false)
+    expect(resolve).toHaveBeenCalledExactlyOnceWith({ ok: false, reason: 'connection-lost' })
+  })
+})
+
+describe('connectionState: реванш', () => {
+  const joined = (matchId: string) => ({ type: SERVER_MESSAGE.JOINED, matchId, code: 'ABC123', you: 0, token: 't', opponentConnected: true }) as const
+
+  it('rematch-status запоминает, кто предложил и возможен ли реванш', () => {
+    const state = new ConnectionState()
+    state.handleServerMessage({ type: SERVER_MESSAGE.REMATCH_STATUS, you: false, opponent: true, available: true })
+    expect(state.rematch).toEqual({ you: false, opponent: true, available: true })
+  })
+
+  it('joined с другим matchId забывает прошлую партию, но оставляет подписчиков и возвращает новый токен', () => {
+    const state = new ConnectionState()
+    const listener = vi.fn()
+    state.subscribeUpdates(listener)
+    state.handleServerMessage(joined('m1'))
+    state.handleServerMessage({ type: SERVER_MESSAGE.UPDATE, version: 9, events: [], view, legalActions: [], turnTimeLeftMs: null, names, endReason: END_REASON.CONCEDE })
+    state.handleServerMessage({ type: SERVER_MESSAGE.REMATCH_STATUS, you: true, opponent: true, available: true })
+    const resolve = vi.fn()
+    state.registerPending('cmd-1', resolve)
+
+    const info = state.handleServerMessage({ ...joined('m2'), token: 't2' })
+    expect(info).toEqual({ matchId: 'm2', token: 't2' })
+    expect(state.matchId).toBe('m2')
+    expect(state.view).toBeNull()
+    expect(state.endReason).toBeNull()
+    expect(state.rematch).toEqual({ you: false, opponent: false, available: false })
+    expect(resolve).toHaveBeenCalledOnce()
+
+    state.handleServerMessage({ type: SERVER_MESSAGE.UPDATE, version: 0, events: [], view, legalActions: [], turnTimeLeftMs: null, names, endReason: null })
+    expect(listener).toHaveBeenCalledTimes(2)
+  })
+
+  it('joined с тем же matchId матч не сбрасывает', () => {
+    const state = new ConnectionState()
+    state.handleServerMessage(joined('m1'))
+    state.handleServerMessage({ type: SERVER_MESSAGE.UPDATE, version: 1, events: [], view, legalActions: [], turnTimeLeftMs: null, names, endReason: null })
+    state.handleServerMessage(joined('m1'))
+    expect(state.view).toBe(view)
   })
 })

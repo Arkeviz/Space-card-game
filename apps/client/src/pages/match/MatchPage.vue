@@ -4,15 +4,27 @@
  * поэтому здесь собирается MatchTransport (IoC).
  */
 import type { MatchTransport } from '@/modules/match'
-import { computed, onBeforeUnmount, onMounted } from 'vue'
+import { computed, onBeforeUnmount, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useGameConnection } from '@/modules/connection'
 import { MatchScreen } from '@/modules/match'
+import { DEFAULT_PLAYER_NAME } from '@/modules/settings'
 
 const connection = useGameConnection()
 const router = useRouter()
 
 const ready = computed(() => connection.state.view !== null)
+// Имена приходят по номеру места; свой и соперника выбираем по тому, какое место занято нами.
+const names = computed(() => {
+  const { names, you } = connection.state
+  const self = you ?? 0
+  return { self: names[self] || DEFAULT_PLAYER_NAME, opponent: names[self === 0 ? 1 : 0] || DEFAULT_PLAYER_NAME }
+})
+// Реванш начинает новую партию с новым matchId: адрес страницы следует за ней.
+watch(() => connection.state.matchId, (matchId) => {
+  if (matchId)
+    router.replace(`/match/${matchId}`)
+})
 // Момент автоматической сдачи отключившегося соперника: серверное «осталось N мс» привязываем к времени получения.
 const opponentReturnDeadline = computed(() => {
   const { opponentReconnectTimeLeftMs, opponentStatusAt } = connection.state
@@ -56,7 +68,11 @@ function leave(): void {
     :online="connection.online.value"
     :opponent-online="connection.state.opponentConnected"
     :opponent-return-deadline="opponentReturnDeadline"
+    :names="names"
+    :end-reason="connection.state.endReason"
+    :rematch="connection.state.rematch"
     @leave="leave"
+    @rematch="connection.requestRematch()"
   />
   <main v-else class="loading" role="status">
     Загрузка матча…

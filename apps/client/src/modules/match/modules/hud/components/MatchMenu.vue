@@ -4,12 +4,16 @@ import { nextTick, ref, useTemplateRef } from 'vue'
 import AppIcon from '@/common/ui/AppIcon.vue'
 import { ICON } from '@/common/ui/icons'
 
-const emit = defineEmits<{ concede: [] }>()
+const emit = defineEmits<{
+  concede: []
+  settings: []
+  help: []
+}>()
 
 const open = ref(false)
 const confirming = ref(false)
 const root = useTemplateRef<HTMLElement>('root')
-const concedeButton = useTemplateRef<HTMLButtonElement>('concedeButton')
+const popover = useTemplateRef<HTMLElement>('popover')
 
 onClickOutside(root, () => close())
 onKeyStroke('Escape', () => close())
@@ -24,8 +28,17 @@ async function toggle(): Promise<void> {
   confirming.value = false
   if (open.value) {
     await nextTick()
-    concedeButton.value?.focus()
+    popover.value?.querySelector<HTMLElement>('button')?.focus()
   }
+}
+
+/** Пункт «Настройки» или «Справка»: меню закрывается, окно открывает экран матча. */
+function choose(item: 'settings' | 'help'): void {
+  close()
+  if (item === 'settings')
+    emit('settings')
+  else
+    emit('help')
 }
 
 function confirm(): void {
@@ -40,9 +53,17 @@ function confirm(): void {
       <AppIcon :name="ICON.MENU" :size="18" :stroke="1.8" />
     </button>
 
-    <div v-if="open" class="menu__popover" role="menu">
+    <div v-if="open" ref="popover" class="menu__popover" role="menu">
       <template v-if="!confirming">
-        <button ref="concedeButton" type="button" class="menu__item menu__item--danger" role="menuitem" @click="confirming = true">
+        <button type="button" class="menu__item" role="menuitem" @click="choose('settings')">
+          <AppIcon :name="ICON.MENU" :size="16" />
+          <span>Настройки</span>
+        </button>
+        <button type="button" class="menu__item" role="menuitem" @click="choose('help')">
+          <AppIcon :name="ICON.INFO" :size="16" />
+          <span>Справка</span>
+        </button>
+        <button type="button" class="menu__item menu__item--danger" role="menuitem" @click="confirming = true">
           <AppIcon :name="ICON.FLAG" :size="16" />
           <span>Сдаться</span>
         </button>

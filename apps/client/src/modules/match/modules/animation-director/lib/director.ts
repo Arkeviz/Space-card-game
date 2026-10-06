@@ -41,6 +41,8 @@ export interface DirectorHost<M = unknown> {
   onBusyChange?: (busy: boolean) => void
   /** Множитель скорости: растёт, когда очередь накапливается. */
   onSpeedChange?: (speed: number) => void
+  /** Настройка игрока «скорость анимаций»: на неё делятся паузы между шагами. Читается на каждом шаге. */
+  speedFactor?: () => number
   wait?: (ms: number) => Promise<void>
 }
 
@@ -140,7 +142,7 @@ export class AnimationDirector<M = unknown> {
         host.setTable(after)
         table = after
         await Promise.race([
-          Promise.all([host.stage.settled(), host.onStep?.(group, before, after), this.wait(beatFor(group) / this.speed)]),
+          Promise.all([host.stage.settled(), host.onStep?.(group, before, after), this.wait(beatFor(group) / (this.speed * (host.speedFactor?.() ?? 1)))]),
           this.wait(MAX_STEP_MS),
         ])
         // Пока шёл шаг, пришла полная синхронизация: этот update устарел, стол уже поставлен по новому снимку.

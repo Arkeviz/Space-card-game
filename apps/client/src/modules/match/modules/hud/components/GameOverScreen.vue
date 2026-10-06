@@ -1,29 +1,33 @@
 <script setup lang="ts">
+import type { EndReason } from '@space/protocol'
+import type { RematchStatus } from '../lib/game-over'
 import { computed, onMounted, useTemplateRef } from 'vue'
 import GameButton from '@/common/ui/GameButton.vue'
 import { circlePath } from '@/common/ui/icons'
+import { rematchView, resultReason } from '../lib/game-over'
 
 const props = defineProps<{
   win: boolean
   turn: number
-  /** Партия кончилась сдачей, а не обнулением авторитета. */
-  conceded: boolean
+  /** Почему партия закончилась; null - причина неизвестна. */
+  reason: EndReason | null
+  selfName: string
+  opponentName: string
+  rematch: RematchStatus
 }>()
 
 defineEmits<{
   newMatch: []
   viewField: []
+  rematch: []
 }>()
 
 const title = computed(() => (props.win ? 'ПОБЕДА' : 'ПОРАЖЕНИЕ'))
-const reason = computed(() => {
-  if (props.conceded)
-    return props.win ? 'Соперник сдался.' : 'Вы сдались.'
-  return props.win ? 'Авторитет соперника обнулён.' : 'Ваш авторитет обнулён.'
-})
+const reasonText = computed(() => resultReason(props.win, props.reason))
+const rematchButton = computed(() => rematchView(props.rematch))
 
 const dialog = useTemplateRef<HTMLElement>('dialog')
-onMounted(() => dialog.value?.querySelector<HTMLElement>('button')?.focus())
+onMounted(() => dialog.value?.querySelector<HTMLElement>('button:not(:disabled)')?.focus())
 </script>
 
 <template>
@@ -41,17 +45,28 @@ onMounted(() => dialog.value?.querySelector<HTMLElement>('button')?.focus())
         {{ title }}
       </h1>
       <p class="over__reason">
-        {{ reason }}
+        {{ reasonText }}
+      </p>
+      <p class="over__players">
+        <span class="over__player">{{ selfName }}</span>
+        <span class="over__vs">VS</span>
+        <span class="over__player">{{ opponentName }}</span>
       </p>
 
       <div class="over__actions">
-        <GameButton class="over__button" @click="$emit('newMatch')">
+        <GameButton class="over__button" :disabled="rematchButton.disabled" @click="$emit('rematch')">
+          {{ rematchButton.label }}
+        </GameButton>
+        <GameButton class="over__button" variant="outline" @click="$emit('newMatch')">
           Новый матч
         </GameButton>
         <GameButton class="over__button" variant="ghost" @click="$emit('viewField')">
           Посмотреть поле
         </GameButton>
       </div>
+      <p class="over__note" role="status">
+        {{ rematchButton.note }}
+      </p>
     </section>
   </div>
 </template>
@@ -126,13 +141,43 @@ onMounted(() => dialog.value?.querySelector<HTMLElement>('button')?.focus())
   font: 400 22px/30px var(--font-text);
 }
 
+.over__players {
+  display: flex;
+  gap: 16px;
+  align-items: baseline;
+  max-width: 100%;
+  color: var(--c-text-soft);
+  font: 600 20px/1.2 var(--font-text);
+}
+
+.over__player {
+  overflow: hidden;
+  max-width: 340px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.over__vs {
+  color: var(--c-muted);
+  font: 600 12px/1 var(--font-mono);
+  letter-spacing: 0.2em;
+}
+
 .over__actions {
   display: flex;
   gap: 14px;
-  margin-top: 22px;
+  margin-top: 14px;
 }
 
 .over__button {
   width: 260px;
+}
+
+/* Место под пояснение занято всегда: кнопки не прыгают, когда оно появляется. */
+.over__note {
+  min-height: 20px;
+  margin: 0;
+  color: var(--c-muted);
+  font: 500 15px/20px var(--font-text);
 }
 </style>

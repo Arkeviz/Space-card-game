@@ -6,8 +6,8 @@ import { computed } from 'vue'
 import { useTick } from '@/common/composables/useTick'
 import AppIcon from '@/common/ui/AppIcon.vue'
 import { ICON } from '@/common/ui/icons'
+import { formatClock } from '@/common/utilities/clock'
 import { FX_TARGET } from '../lib/fx'
-import { formatClock } from '../lib/turn-info'
 import FxFloat from './FxFloat.vue'
 
 const props = defineProps<{

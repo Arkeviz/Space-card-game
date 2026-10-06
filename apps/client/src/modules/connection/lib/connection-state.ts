@@ -1,10 +1,19 @@
 import type { Command, CommandError, GameEvent, PlayerId, PlayerView } from '@space/engine'
-import type { MatchError, ServerMessage, UpdateMessage } from '@space/protocol'
+import type { EndReason, MatchError, ServerMessage, UpdateMessage } from '@space/protocol'
 import { MATCH_ERROR, SERVER_MESSAGE } from '@space/protocol'
 
 export type CommandResult
   = | { ok: true }
     | { ok: false, reason: CommandError | 'connection-lost' }
+
+/** Реванш после конца партии: кто предложил и возможен ли он (соперник на месте). */
+export interface RematchState {
+  you: boolean
+  opponent: boolean
+  available: boolean
+}
+
+const NO_REMATCH: RematchState = { you: false, opponent: false, available: false }
 
 /** Возвращается из handleServerMessage только на JOINED: секрет для переподключения нужно сохранить снаружи (localStorage). */
 export interface ReconnectInfo {
@@ -33,6 +42,13 @@ export class ConnectionState {
   /** Сколько мс до автодействия сервера было на момент последнего update; отсчитывать от updatedAt. */
   turnTimeLeftMs: number | null = null
   updatedAt = 0
+  /** Имена игроков по номеру места (PlayerId). */
+  names: [string, string] = ['', '']
+  /** Почему партия закончилась; null, пока она идёт. */
+  endReason: EndReason | null = null
+  /** Игрок стоит в очереди быстрого поиска. */
+  searching = false
+  rematch: RematchState = { ...NO_REMATCH }
 
   private readonly updateListeners = new Set<UpdateListener>()
   private readonly pending = new Map<string, (result: CommandResult) => void>()
@@ -41,6 +57,11 @@ export class ConnectionState {
   handleServerMessage(message: ServerMessage): ReconnectInfo | null {
     switch (message.type) {
       case SERVER_MESSAGE.JOINED:
+        // Новая партия поверх старой (реванш): всё, что относилось к прошлой, забываем, как при выходе.
+        if (this.matchId !== null && this.matchId !== message.matchId)
+          this.leave()
+        this.searching = false
+        this.rematch = { ...NO_REMATCH }
         this.matchId = message.matchId
         this.code = message.code
         this.you = message.you
@@ -54,6 +75,8 @@ export class ConnectionState {
         this.legalActions = message.legalActions
         this.lastEvents = message.events
         this.turnTimeLeftMs = message.turnTimeLeftMs
+        this.names = message.names
+        this.endReason = message.endReason
         this.updatedAt = Date.now()
         // Update приходит и пока соперник отключён (автоход по таймауту): статус меняет только OPPONENT_STATUS.
         // Исключение - самый первый update матча: раз партия идёт, соперник на месте.
@@ -68,6 +91,14 @@ export class ConnectionState {
         this.opponentConnected = message.connected
         this.opponentReconnectTimeLeftMs = message.reconnectTimeLeftMs
         this.opponentStatusAt = Date.now()
+        return null
+
+      case SERVER_MESSAGE.SEARCH_STATUS:
+        this.searching = message.searching
+        return null
+
+      case SERVER_MESSAGE.REMATCH_STATUS:
+        this.rematch = { you: message.you, opponent: message.opponent, available: message.available }
         return null
 
       case SERVER_MESSAGE.ACK:
@@ -105,6 +136,15 @@ export class ConnectionState {
     this.lastEvents = []
     this.lastError = null
     this.turnTimeLeftMs = null
+    this.names = ['', '']
+    this.endReason = null
+    this.rematch = { ...NO_REMATCH }
+    this.rejectAllPending()
+  }
+
+  /** Соединение с сервером оборвалось: очередь поиска на сервере потеряна, ждать в ней больше нечего. */
+  handleDisconnected(): void {
+    this.searching = false
     this.rejectAllPending()
   }
 
