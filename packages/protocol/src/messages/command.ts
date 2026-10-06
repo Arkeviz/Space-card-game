@@ -2,7 +2,8 @@ import type { Command } from '@space/engine'
 import { ABILITY_KIND, COMMAND_TYPE } from '@space/engine'
 import * as z from 'zod'
 
-const cardId = z.string().min(1)
+/** id экземпляра карты (`c0`, `c117`): предел с большим запасом, длиннее не бывает. */
+const cardId = z.string().min(1).max(32)
 /** Первый prompt в партии получает id 1 (счётчик увеличивается до присвоения), 0 никогда не бывает валиден. */
 const promptId = z.number().int().min(1)
 const abilityKind = z.enum([ABILITY_KIND.BASIC, ABILITY_KIND.ALLY, ABILITY_KIND.SCRAP])

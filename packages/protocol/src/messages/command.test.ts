@@ -33,6 +33,7 @@ describe('parseCommand', () => {
       { type: COMMAND_TYPE.SKIP, promptId: 0 },
       { type: COMMAND_TYPE.CHOOSE_CARDS, promptId: 1, cardIds: [] },
       { type: COMMAND_TYPE.CHOOSE_CARDS, promptId: 1, cardIds: [''] },
+      { type: COMMAND_TYPE.PLAY_CARD, cardId: 'c'.repeat(33) },
       { type: COMMAND_TYPE.ACTIVATE, cardId: 'c1', ability: 'evil' },
       null,
       undefined,

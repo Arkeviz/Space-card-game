@@ -8,6 +8,7 @@ import process from 'node:process'
 import { apply, COMMAND_TYPE, createGame, legalActions, redact, redactEvents } from '@space/engine'
 import { MATCH_ERROR, SERVER_MESSAGE } from '@space/protocol'
 import { claimSeat, COMMAND_SOURCE, endReasonOf, generateCode, otherSeat, Room, tokenMatches } from './room.ts'
+import { sendText, SOCKET_OPEN } from './socket.ts'
 import { NULL_REPOSITORY } from './storage/repository.ts'
 
 export { Room } from './room.ts'
@@ -48,12 +49,8 @@ interface Searcher {
   name: string
 }
 
-/** 1 = WebSocket.OPEN. Не импортируем константу из 'ws', чтобы не тянуть лишний рантайм-объект. */
-const SOCKET_OPEN = 1
-
 function send(socket: WebSocket, message: ServerMessage): void {
-  if (socket.readyState === SOCKET_OPEN)
-    socket.send(JSON.stringify(message))
+  sendText(socket, JSON.stringify(message))
 }
 
 /**

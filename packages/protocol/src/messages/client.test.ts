@@ -1,6 +1,6 @@
 import { COMMAND_TYPE } from '@space/engine'
 import { describe, expect, it } from 'vitest'
-import { CLIENT_MESSAGE, parseClientMessage, PLAYER_NAME_MAX_LENGTH } from './client.ts'
+import { CLIENT_MESSAGE, CODE_MAX_LENGTH, ID_MAX_LENGTH, parseClientMessage, PLAYER_NAME_MAX_LENGTH, TOKEN_MAX_LENGTH } from './client.ts'
 
 const parse = (message: unknown) => parseClientMessage(JSON.stringify(message))
 
@@ -30,6 +30,20 @@ describe('parseClientMessage', () => {
     expect(parse({ type: 'ping' })).toBeNull()
     expect(parse({ type: CLIENT_MESSAGE.JOIN_MATCH, code: '', name: 'Боб' })).toBeNull()
     expect(parse({ type: CLIENT_MESSAGE.COMMAND, commandId: 'c1', command: { type: 'nope' } })).toBeNull()
+  })
+
+  it('служебные строки длиннее предела отклоняются, ровно предел принимается', () => {
+    const join = (code: string) => parse({ type: CLIENT_MESSAGE.JOIN_MATCH, code, name: 'Боб' })
+    const reconnect = (matchId: string, token: string) => parse({ type: CLIENT_MESSAGE.RECONNECT, matchId, token })
+    const command = (commandId: string) => parse({ type: CLIENT_MESSAGE.COMMAND, commandId, command: { type: COMMAND_TYPE.END_TURN } })
+
+    expect(join('A'.repeat(CODE_MAX_LENGTH))).not.toBeNull()
+    expect(join('A'.repeat(CODE_MAX_LENGTH + 1))).toBeNull()
+    expect(reconnect('m'.repeat(ID_MAX_LENGTH), 't'.repeat(TOKEN_MAX_LENGTH))).not.toBeNull()
+    expect(reconnect('m'.repeat(ID_MAX_LENGTH + 1), 't')).toBeNull()
+    expect(reconnect('m', 't'.repeat(TOKEN_MAX_LENGTH + 1))).toBeNull()
+    expect(command('c'.repeat(ID_MAX_LENGTH))).not.toBeNull()
+    expect(command('c'.repeat(ID_MAX_LENGTH + 1))).toBeNull()
   })
 })
 

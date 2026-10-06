@@ -21,6 +21,7 @@ const ERROR_TEXT: Record<MatchError, string> = {
   [MATCH_ERROR.NOT_IN_MATCH]: 'Вы не участвуете в матче.',
   [MATCH_ERROR.ALREADY_IN_MATCH]: 'Вы уже в матче.',
   [MATCH_ERROR.EXPIRED]: 'Матч закрыт: соперник так и не подключился.',
+  [MATCH_ERROR.RATE_LIMITED]: 'Слишком много матчей за короткое время. Попробуйте через пару минут.',
 }
 
 const connected = computed(() => connection.online.value)

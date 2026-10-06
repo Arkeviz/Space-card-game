@@ -45,6 +45,8 @@ export const MATCH_ERROR = {
   ALREADY_IN_MATCH: 'already-in-match',
   /** Комната удалена: никто не занял второе место слишком долго. */
   EXPIRED: 'expired',
+  /** Слишком много матчей с одного адреса за короткое время: попробовать позже. */
+  RATE_LIMITED: 'rate-limited',
 } as const
 export type MatchError = (typeof MATCH_ERROR)[keyof typeof MATCH_ERROR]
 

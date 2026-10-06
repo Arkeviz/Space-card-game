@@ -11,7 +11,7 @@ import { MATCH_STATUS } from './repository.ts'
 
 /*
  * Интеграционный тест против настоящего PostgreSQL. Запускается, только если задан TEST_DATABASE_URL
- * (например, postgres://space:space@localhost:5432/space после `pnpm db:up`; в CI - сервис postgres).
+ * (после `pnpm db:up` - суперпользователем: postgres://postgres:<POSTGRES_PASSWORD>@localhost:5432/space; в CI - сервис postgres).
  * Каждый запуск создаёт и удаляет собственную временную базу: тест чистит таблицы целиком (проверка срока хранения),
  * и данные разработки трогать нельзя.
  */

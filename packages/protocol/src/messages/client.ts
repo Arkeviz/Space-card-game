@@ -25,7 +25,15 @@ export const CLIENT_MESSAGE = {
 /** Максимальная длина имени игрока (клиент берёт её для maxlength поля ввода). */
 export const PLAYER_NAME_MAX_LENGTH = 20
 
-const nonEmptyString = z.string().min(1)
+/**
+ * Пределы длины служебных строк: с запасом к настоящим значениям (код - 6 символов, matchId и commandId - UUID,
+ * токен - 64 hex-символа). Сервер не должен хранить и пересылать обратно строки произвольной длины.
+ */
+export const CODE_MAX_LENGTH = 16
+export const ID_MAX_LENGTH = 64
+export const TOKEN_MAX_LENGTH = 128
+
+const boundedString = (max: number) => z.string().min(1).max(max)
 
 /** Имя игрока: без пробелов по краям, 1..PLAYER_NAME_MAX_LENGTH символов, без управляющих и невидимых символов. */
 const PlayerNameSchema = z.string()
@@ -36,13 +44,13 @@ const PlayerNameSchema = z.string()
 
 const ClientMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal(CLIENT_MESSAGE.CREATE_MATCH), name: PlayerNameSchema }),
-  z.object({ type: z.literal(CLIENT_MESSAGE.JOIN_MATCH), code: nonEmptyString, name: PlayerNameSchema }),
+  z.object({ type: z.literal(CLIENT_MESSAGE.JOIN_MATCH), code: boundedString(CODE_MAX_LENGTH), name: PlayerNameSchema }),
   z.object({ type: z.literal(CLIENT_MESSAGE.FIND_MATCH), name: PlayerNameSchema }),
   z.object({ type: z.literal(CLIENT_MESSAGE.CANCEL_SEARCH) }),
-  z.object({ type: z.literal(CLIENT_MESSAGE.RECONNECT), matchId: nonEmptyString, token: nonEmptyString }),
+  z.object({ type: z.literal(CLIENT_MESSAGE.RECONNECT), matchId: boundedString(ID_MAX_LENGTH), token: boundedString(TOKEN_MAX_LENGTH) }),
   z.object({ type: z.literal(CLIENT_MESSAGE.LEAVE_MATCH) }),
   z.object({ type: z.literal(CLIENT_MESSAGE.REMATCH) }),
-  z.object({ type: z.literal(CLIENT_MESSAGE.COMMAND), commandId: nonEmptyString, command: CommandSchema }),
+  z.object({ type: z.literal(CLIENT_MESSAGE.COMMAND), commandId: boundedString(ID_MAX_LENGTH), command: CommandSchema }),
   z.object({ type: z.literal(CLIENT_MESSAGE.SYNC) }),
 ])
 

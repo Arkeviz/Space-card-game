@@ -22,7 +22,11 @@ async function main(): Promise<void> {
     log('DATABASE_URL is not set: matches are kept in memory only and are lost on restart')
   }
 
-  const app = buildApp({ repository })
+  const app = buildApp({
+    repository,
+    trustProxy: config.trustProxy,
+    limits: { maxConnectionsPerIp: config.maxConnectionsPerIp, matchStartsPerHour: config.matchStartsPerHour },
+  })
   const stopRetention = config.databaseUrl
     ? startRetention(repository, {
         days: config.retentionDays,
