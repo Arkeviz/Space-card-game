@@ -17,7 +17,7 @@ const props = defineProps<{
 }>()
 
 defineEmits<{
-  newMatch: []
+  mainMenu: []
   viewField: []
   rematch: []
 }>()
@@ -57,8 +57,8 @@ onMounted(() => dialog.value?.querySelector<HTMLElement>('button:not(:disabled)'
         <GameButton class="over__button" :disabled="rematchButton.disabled" @click="$emit('rematch')">
           {{ rematchButton.label }}
         </GameButton>
-        <GameButton class="over__button" variant="outline" @click="$emit('newMatch')">
-          Новый матч
+        <GameButton class="over__button" variant="outline" @click="$emit('mainMenu')">
+          В главное меню
         </GameButton>
         <GameButton class="over__button" variant="ghost" @click="$emit('viewField')">
           Посмотреть поле

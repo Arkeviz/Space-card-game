@@ -250,7 +250,7 @@ watch(pending, () => {
         :opponent-name="names.opponent"
         :rematch="rematch"
         @rematch="emit('rematch')"
-        @new-match="emit('leave')"
+        @main-menu="emit('leave')"
         @view-field="hideGameOver = true"
       />
       <button v-if="gameOver && !showGameOver" type="button" class="match__result" @click="hideGameOver = false">
