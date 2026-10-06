@@ -1,22 +1,28 @@
 # Весь стек одной командой: `pnpm docker:up` -> http://localhost:8080
 # Только база для разработки (сервер и клиент запускаются из IDE): `pnpm db:up`.
+# Пароли и лимиты берутся из файла .env рядом с этим файлом (образец - .env.example).
 name: space-card-game
 
 services:
   db:
-    image: postgres:17-alpine
+    image: postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
     restart: unless-stopped
     environment:
-      POSTGRES_USER: space
-      POSTGRES_PASSWORD: space
+      # Суперпользователь postgres - только для обслуживания. Сервер ходит ролью space без прав суперпользователя:
+      # её создаёт docker/postgres/01-app-role.sh при первой инициализации тома.
+      POSTGRES_PASSWORD: '${POSTGRES_PASSWORD:?задайте POSTGRES_PASSWORD в .env, образец - .env.example}'
       POSTGRES_DB: space
+      APP_DB_PASSWORD: '${APP_DB_PASSWORD:?задайте APP_DB_PASSWORD в .env, образец - .env.example}'
     # Порт наружу нужен для разработки: сервер из IDE подключается к localhost:5432. Только с этой машины.
     ports:
       - '127.0.0.1:5432:5432'
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - ./docker/postgres:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: [CMD-SHELL, pg_isready -U space -d space]
+      # По TCP: пока том инициализируется, postgres слушает только локальный сокет, и сервер не начнёт
+      # подключаться раньше, чем создана его роль.
+      test: [CMD-SHELL, pg_isready -h 127.0.0.1 -U space -d space]
       interval: 3s
       timeout: 3s
       retries: 20
@@ -27,8 +33,14 @@ services:
       dockerfile: apps/server/Dockerfile
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgres://space:space@db:5432/space
+      DATABASE_URL: 'postgres://space:${APP_DB_PASSWORD:?задайте APP_DB_PASSWORD в .env, образец - .env.example}@db:5432/space'
       MATCH_RETENTION_DAYS: '14'
+      # Адрес клиента берётся из X-Forwarded-For, который ставит nginx клиента (он в частной сети Docker).
+      TRUST_PROXY: uniquelocal
+      # Лимиты по адресу клиента, 0 - выключены. Под Docker Desktop все игроки приходят с одного адреса шлюза Docker,
+      # и лимит стал бы общим на всех, поэтому по умолчанию выключены (подробнее - .env.example).
+      MAX_CONNECTIONS_PER_IP: '${MAX_CONNECTIONS_PER_IP:-0}'
+      MATCH_STARTS_PER_HOUR: '${MATCH_STARTS_PER_HOUR:-0}'
     depends_on:
       db:
         condition: service_healthy

@@ -37,14 +37,16 @@ pnpm dev:client    # клиент, http://localhost:5173
 Без базы данных сервер работает, но партии живут только в памяти. Чтобы они сохранялись:
 
 ```bash
+cp .env.example .env                                    # пароли базы: задать свои (openssl rand -hex 24)
 pnpm db:up                                              # PostgreSQL в Docker
-cp apps/server/.env.example apps/server/.env            # DATABASE_URL для сервера
+cp apps/server/.env.example apps/server/.env            # DATABASE_URL для сервера: пароль APP_DB_PASSWORD из .env
 ```
 
 ### Весь стек в Docker
 
 ```bash
-pnpm docker:up     # PostgreSQL + сервер + клиент, http://localhost:8080
+cp .env.example .env   # если ещё нет: пароли базы
+pnpm docker:up         # PostgreSQL + сервер + клиент, http://localhost:8080
 ```
 
 ### GitHub Pages (необязательно)

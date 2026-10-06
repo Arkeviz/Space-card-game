@@ -7,10 +7,12 @@ Fastify + `@fastify/websocket`. Маршрут `/ws` (и `/health`), логик�
 ```text
 src/
   main.ts             запуск (слушает PORT, по умолчанию 3001)
-  app.ts               buildApp(): сборка Fastify-приложения, разбор входящих WS-сообщений, маршрутизация в MatchManager
+  app.ts               buildApp(): сборка Fastify-приложения, разбор входящих WS-сообщений, маршрутизация в MatchManager, лимиты
+  limits.ts             Limits и DEFAULT_LIMITS, TokenBucket, clientKey (адрес клиента для лимитов)
+  socket.ts             sendText: отправка с обрывом соединения, которое не читает ответы
   match-manager.ts      MatchManager: комнаты, вход, быстрый поиск, реванш, таймауты хода и отключения
   room.ts               Room, Seat, токены (хэши), COMMAND_SOURCE и причина конца партии
-  config.ts             loadConfig: PORT, DATABASE_URL, MATCH_RETENTION_DAYS
+  config.ts             loadConfig: PORT, DATABASE_URL, MATCH_RETENTION_DAYS, TRUST_PROXY, лимиты по адресу
   storage/              MatchRepository, схема Drizzle, Postgres-реализация, подключение и миграции, срок хранения
   testing.ts            FakeSocket и помощники для тестов
   *.test.ts             тесты рядом с кодом
@@ -90,6 +92,32 @@ drizzle/                SQL-миграции (drizzle-kit generate), храня�
 При отключении сокета соперник получает `opponent-status { connected: false, reconnectTimeLeftMs }` (отсчёт до автоматической сдачи), при возвращении -
 `connected: true`. Вернувшийся игрок и вошедший второй игрок тоже сразу узнают текущий статус соперника.
 
+## Защита от перегрузки
+
+Один клиент не должен останавливать сервер для всех. Пределы - `Limits` в `limits.ts` (значения по умолчанию - `DEFAULT_LIMITS`,
+в тестах - через `buildApp({ limits })`), применяет их `app.ts`:
+
+- **Размер сообщения** - не больше `maxMessageBytes` (4 КБ, самое длинное настоящее - меньше килобайта). Больше - `ws` закрывает
+  соединение с кодом 1009, не собирая сообщение целиком. Строки в схемах `@space/protocol` тоже ограничены по длине.
+- **Частота сообщений** - ведро токенов на сокет (`TokenBucket`): в среднем `messagesPerSecond` (20 в секунду), подряд до
+  `messageBurst` (40). Чаще - соединение закрывается с кодом 1008. Ответ на `sync` стоит процессорного времени (`legalActions`
+  проверяет каждую команду через `apply`), и без предела один сокет занимал бы весь event loop.
+- **Медленный читатель** - `sendText` (`socket.ts`) рвёт соединение, если в нём ждёт отправки больше 1 МБ: клиент, который шлёт
+  запросы и не читает ответы, иначе исчерпал бы память сервера.
+- **Соединения** - не больше `maxConnections` (2000) всего и `maxConnectionsPerIp` (20) с одного адреса; лишние закрываются с кодом 1013.
+- **Новые матчи** - `create-match`, `join-match`, `find-match` и `rematch` с одного адреса не чаще `matchStartsPerHour` (60) в час,
+  подряд до `matchStartBurst` (20): каждая партия - записи в базе. Сверх лимита - `error: rate-limited` (у `find-match` перед ним
+  `search-status { searching: false }`).
+- **Мёртвые соединения** - раз в `heartbeatIntervalMs` (30 с) сервер шлёт ping и закрывает сокет, не ответивший на предыдущий
+  (браузер отвечает сам). Иначе вкладка, пропавшая без закрытия соединения, считалась бы на связи бесконечно.
+- **Ошибка в обработчике** - обработка сообщения обёрнута в try/catch: исключение пишется в stderr и закрывает только этот сокет
+  (код 1011, клиент переподключится и получит снимок), а не роняет процесс со всеми партиями.
+
+Адрес клиента - `request.ip` Fastify, сведённый `clientKey` к ключу: IPv6 - к сети /64. За прокси сервер должен знать, каким
+адресам верить в `X-Forwarded-For` (`TRUST_PROXY`), иначе все клиенты получили бы адрес прокси. nginx клиента перезаписывает
+`X-Forwarded-For` адресом, который видит сам. Под Docker Desktop (Windows, macOS) контейнеры видят всех клиентов с адреса шлюза
+Docker (например, `172.17.0.1`), поэтому в `docker-compose.yml` лимиты по адресу по умолчанию выключены (0).
+
 ## Хранение партий (PostgreSQL + Drizzle)
 
 Партии хранятся в PostgreSQL через `drizzle-orm` (`pg`). Игра с базой не связана жёстко (`MatchRepository` в
@@ -126,6 +154,9 @@ drizzle/                SQL-миграции (drizzle-kit generate), храня�
 | `PORT` | 3001 | порт HTTP/WS-сервера |
 | `DATABASE_URL` | не задана | строка подключения к PostgreSQL; без неё партии только в памяти и пропадают при перезапуске |
 | `MATCH_RETENTION_DAYS` | 14 | сколько суток партии хранятся после последнего изменения |
+| `TRUST_PROXY` | не задана | каким прокси верить в `X-Forwarded-For`: адреса, подсети и имена `loopback`, `linklocal`, `uniquelocal` через запятую (в Docker - `uniquelocal`) |
+| `MAX_CONNECTIONS_PER_IP` | 20 | сколько соединений держится с одного адреса; 0 - без предела |
+| `MATCH_STARTS_PER_HOUR` | 60 | сколько матчей в час можно начать с одного адреса; 0 - без предела |
 
 `pnpm dev` и `pnpm start` подхватывают файл `apps/server/.env` (`node --env-file-if-exists`); пример - `.env.example`. Неверное значение
 останавливает запуск с понятным сообщением (`config.ts`). `GET /health` отвечает `{ "status": "ok" }` (проверка живости в Docker).
@@ -135,13 +166,43 @@ drizzle/                SQL-миграции (drizzle-kit generate), храня�
 В корне репозитория лежит `docker-compose.yml` (PostgreSQL 17, сервер, клиент с nginx). Только локально, образы не публикуются.
 
 ```bash
-pnpm db:up        # только база (порт 5432 на localhost); сервер и клиент - из IDE: DATABASE_URL в apps/server/.env
-pnpm docker:up    # весь стек, http://localhost:8080
+cp .env.example .env   # пароли базы (POSTGRES_PASSWORD, APP_DB_PASSWORD): без них compose не запускается
+pnpm db:up             # только база (порт 5432 на localhost); сервер и клиент - из IDE: DATABASE_URL в apps/server/.env
+pnpm docker:up         # весь стек, http://localhost:8080
 ```
+
+**Роли базы.** Суперпользователь `postgres` (пароль `POSTGRES_PASSWORD`) нужен только для обслуживания и интеграционного
+теста. Сервер ходит ролью `space` (пароль `APP_DB_PASSWORD`): владелец базы `space` без прав суперпользователя, её создаёт
+`docker/postgres/01-app-role.sh`. Образ postgres выполняет этот скрипт и берёт пароли из окружения только при первой
+инициализации пустого тома `pgdata`.
+
+**Том, созданный до появления отдельной роли.** Тогда `space` был суперпользователем, созданным при инициализации тома (с паролем
+`space`), и снять с него права нельзя. Проще всего удалить том вместе с партиями: `docker compose down -v`, затем `pnpm docker:up`.
+Сохранить партии можно так: создать `.env`, остановить сервер (`docker compose stop server`), открыть
+`docker compose exec db psql -U space -d space` и выполнить, подставив свои пароли из `.env`:
+
+```sql
+CREATE ROLE migrator SUPERUSER LOGIN;
+\c - migrator
+ALTER ROLE space RENAME TO postgres;
+ALTER ROLE postgres PASSWORD 'POSTGRES_PASSWORD из .env';
+CREATE ROLE space LOGIN PASSWORD 'APP_DB_PASSWORD из .env';
+ALTER DATABASE space OWNER TO space;
+ALTER SCHEMA drizzle OWNER TO space;
+ALTER TABLE drizzle.__drizzle_migrations OWNER TO space;
+ALTER TABLE matches OWNER TO space;
+ALTER TABLE match_commands OWNER TO space;
+\c - postgres
+DROP ROLE migrator;
+```
+
+Бывший `space` становится суперпользователем `postgres`, а сервер получает новую роль `space` и владение таблицами. Затем `pnpm docker:up`.
 
 `apps/server/Dockerfile` сохраняет раскладку монорепозитория (`packages/*`, `apps/server`): Node запускает `.ts` напрямую и не
 снимает типы с файлов внутри `node_modules`, а workspace-пакеты - ссылки на `packages/*` с реальным путём вне `node_modules`.
 CI (`.github/workflows/ci.yml`): lint, типы и тесты (с сервисом postgres для интеграционного теста) и сборка обоих образов без публикации.
+Экшены закреплены по SHA коммита, базовые образы (Dockerfile, compose, сервис CI) - по digest; обновления раз в неделю предлагает
+Dependabot (`.github/dependabot.yml`).
 
 ## Известные ограничения
 
@@ -159,5 +220,5 @@ pnpm db:generate                         # миграция по схеме (dri
 ```
 
 Интеграционный тест `storage/postgres-repository.test.ts` идёт против настоящего PostgreSQL, если задан `TEST_DATABASE_URL`
-(например, `postgres://space:space@localhost:5432/space` после `pnpm db:up`): он создаёт и удаляет собственную временную базу,
+(после `pnpm db:up` - суперпользователем: `postgres://postgres:<POSTGRES_PASSWORD>@localhost:5432/space`): он создаёт и удаляет собственную временную базу,
 данные разработки не трогает. Без переменной тест пропускается.

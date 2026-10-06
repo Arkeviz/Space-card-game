@@ -1,0 +1,26 @@
+# Экшены в workflow и базовые образы закреплены по SHA и digest: без обновлений они бы устаревали.
+# Dependabot раз в неделю предлагает обновления одним PR на каждую экосистему.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ['*']
+
+  - package-ecosystem: docker
+    directories:
+      - /apps/server
+      - /apps/client
+    schedule:
+      interval: weekly
+    groups:
+      images:
+        patterns: ['*']
+
+  - package-ecosystem: docker-compose
+    directory: /
+    schedule:
+      interval: weekly

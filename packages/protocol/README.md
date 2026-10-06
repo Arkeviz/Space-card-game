@@ -53,7 +53,8 @@ src/
 `search-status { searching }` сообщает о постановке в очередь поиска и выходе из неё. `rematch-status { you, opponent, available }` - кто предложил реванш
 и возможен ли он (соперник на месте).
 
-`MATCH_ERROR` - ошибки уровня матча (`not-found`, `full`, `invalid-token`, `not-in-match`, `already-in-match`, `expired` - комната удалена, пока создатель ждал соперника),
+`MATCH_ERROR` - ошибки уровня матча (`not-found`, `full`, `invalid-token`, `not-in-match`, `already-in-match`, `expired` - комната удалена, пока создатель ждал соперника,
+`rate-limited` - слишком много матчей с одного адреса),
 отдельно от `CommandError` из `@space/engine` (ошибки конкретной команды, приходят в `reject.reason`).
 
 Логика комнат матчей и таймаутов живёт в `apps/server` (`match-manager.ts`), не здесь.
