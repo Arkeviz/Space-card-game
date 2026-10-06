@@ -20,7 +20,8 @@ const props = defineProps<{
 
 const emit = defineEmits<{ cancel: [] }>()
 
-const { copy, copied } = useClipboard({ copiedDuring: 2000 })
+// legacy: navigator.clipboard есть только в защищённом контексте (HTTPS), а игру открывают и по http://адрес:порт.
+const { copy, copied } = useClipboard({ copiedDuring: 2000, legacy: true })
 const chars = computed(() => (props.code ?? '').split(''))
 
 const startedAt = Date.now()

@@ -5,6 +5,7 @@ import type { CommandResult, UpdateListener } from '../lib/connection-state'
 import { CLIENT_MESSAGE, HEARTBEAT, MATCH_ERROR, SERVER_MESSAGE } from '@space/protocol'
 import { useIntervalFn, useWebSocket } from '@vueuse/core'
 import { computed, inject, reactive, watch } from 'vue'
+import { randomId } from '@/common/utilities/random-id'
 import { ConnectionState } from '../lib/connection-state'
 
 const STORAGE_KEY = 'space-card-game:reconnect'
@@ -143,7 +144,7 @@ export function createGameConnection(wsUrl: string): GameConnection {
     },
     requestRematch: () => send({ type: CLIENT_MESSAGE.REMATCH }),
     submitCommand: command => new Promise<CommandResult>((resolve) => {
-      const commandId = crypto.randomUUID()
+      const commandId = randomId()
       state.registerPending(commandId, resolve)
       send({ type: CLIENT_MESSAGE.COMMAND, commandId, command })
     }),
