@@ -1,0 +1,53 @@
+# Весь стек одной командой: `pnpm docker:up` -> http://localhost:8080
+# Только база для разработки (сервер и клиент запускаются из IDE): `pnpm db:up`.
+name: space-card-game
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: space
+      POSTGRES_PASSWORD: space
+      POSTGRES_DB: space
+    # Порт наружу нужен для разработки: сервер из IDE подключается к localhost:5432. Только с этой машины.
+    ports:
+      - '127.0.0.1:5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U space -d space]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  server:
+    build:
+      context: .
+      dockerfile: apps/server/Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://space:space@db:5432/space
+      MATCH_RETENTION_DAYS: '14'
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, wget, -qO-, 'http://127.0.0.1:3001/health']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  client:
+    build:
+      context: .
+      dockerfile: apps/client/Dockerfile
+    restart: unless-stopped
+    ports:
+      - '8080:80'
+    depends_on:
+      server:
+        condition: service_healthy
+
+volumes:
+  pgdata:

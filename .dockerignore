@@ -1,0 +1,10 @@
+**/node_modules
+**/dist
+.git
+.idea
+.claude
+.playwright-mcp
+.github
+**/.env
+**/*.log
+**/.vite
