@@ -3,11 +3,12 @@ name: Deploy to GitHub Pages
 # Публикует только клиент (статику). Игровой сервер на Pages запустить нельзя: адрес своего сервера
 # задаётся переменной репозитория PAGES_WS_URL (например, wss://game.example.com/ws).
 #
-# Автоматический деплой при каждом пуше в main включается флагом: Settings -> Secrets and variables -> Actions ->
-# Variables -> DEPLOY_PAGES = true. Без флага работает только ручной запуск (Actions -> Deploy to GitHub Pages -> Run workflow).
+# Сейчас деплой только ручной (Actions -> Deploy to GitHub Pages -> Run workflow). Автоматический деплой при пуше
+# в main отключён; чтобы вернуть, раскомментируйте блок push ниже и задайте переменную репозитория DEPLOY_PAGES = true
+# (Settings -> Secrets and variables -> Actions -> Variables).
 on:
-  push:
-    branches: [main]
+  # push:
+  #   branches: [main]
   workflow_dispatch:
 
 permissions:

@@ -55,7 +55,7 @@ Workflow `.github/workflows/pages.yml` публикует клиент на GitH
 
 - Включить: Settings -> Pages -> Source: GitHub Actions.
 - Ручной деплой: Actions -> Deploy to GitHub Pages -> Run workflow.
-- Автоматический деплой при каждом пуше в `main`: переменная репозитория `DEPLOY_PAGES` = `true` (Settings -> Secrets and variables -> Actions -> Variables). Пока флага нет, пуш деплой не запускает.
+- Автоматический деплой при пуше в `main` сейчас отключён: в `pages.yml` закомментирован блок `push`. Чтобы вернуть, раскомментируйте его и задайте переменную репозитория `DEPLOY_PAGES` = `true` (Settings -> Secrets and variables -> Actions -> Variables): без неё пуш деплой не запускает.
 
 ## Проверки
 
