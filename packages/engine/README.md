@@ -64,8 +64,7 @@ type Command
 
 ## Эффекты карт и запросы выбора
 
-Каталог (`data/cards.ts`) - это 80 карт базового набора плюс стартовые карты и Исследователи; состав Торговой колоды - `TRADE_DECK_COMPOSITION` в `data/config.ts`. Значения записаны по памяти и не сверены с физической игрой (см. TODO в начале каталога).
-
+Каталог (`data/cards.ts`) - это 80 карт базового набора плюс стартовые карты и Исследователи; состав Торговой колоды - `TRADE_DECK_COMPOSITION` в `data/config.ts`.
 Эффект (`Effect`) либо выполняется сразу (`GAIN`, `DRAW`, `OPPONENT_DISCARD`, `SHIP_TO_DECK_TOP`, `DRAW_IF_BASES`, `DRAW_PER_PLAYED`), либо открывает prompt и ждёт ответа игрока (остаток цепочки хранится в `state.continuation`):
 
 | Эффект | Prompt | Ответ |

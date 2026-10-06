@@ -18,11 +18,7 @@ const drawPerPlayed = (faction: Faction): Effect => ({ type: EFFECT_TYPE.DRAW_PE
 const discardDraw = (max: number): Effect => ({ type: EFFECT_TYPE.DISCARD_DRAW, max })
 const copyShip = (): Effect => ({ type: EFFECT_TYPE.COPY_SHIP })
 
-/*
- * Каталог карт базового набора. Значения записаны по памяти и НЕ сверены с физической игрой:
- * TODO сверить числа и тексты каждой карты с настоящими картами.
- */
-/** Описание карты в каталоге: набор по умолчанию - базовый. */
+/** Описание карты в каталоге базового набора: набор по умолчанию - базовый. */
 type CardDefinition = Omit<Card, 'set'> & Partial<Pick<Card, 'set'>>
 
 const cards: CardDefinition[] = [

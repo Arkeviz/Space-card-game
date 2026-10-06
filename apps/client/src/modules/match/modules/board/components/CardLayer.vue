@@ -1,19 +1,24 @@
 <script setup lang="ts">
+import type { FxContext } from '../lib/card-fx'
 import type { Pose } from '../lib/layout'
 /*
  * Единый слой всех видимых карт стола. Зоны (рука, ряд, поле, стопки) - только разметка и геометрия; сами карты
  * лежат здесь плоским списком с ключом по id экземпляра. Когда карта меняет зону, компонент не пересоздаётся:
  * меняется её целевая поза, и GSAP анимирует transform. Новые карты появляются из точки, которую задаёт Motion
  * (колода, рука соперника), исчезающие - улетают в заданную точку или растворяются.
+ *
+ * Эффекты (расщепление утиля) - lib/card-fx.ts, ожидание анимаций - lib/tween-tracker.ts, перетаскивание -
+ * composables/useCardDrag.ts.
  */
-import type { Motion, SpawnHint } from '../lib/motion'
+import type { Motion } from '../lib/motion'
 import type { CardNode, DragState, NavKey } from '../lib/nodes'
 import gsap from 'gsap'
-import { Draggable } from 'gsap/Draggable'
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { insideAny } from '../lib/layout'
+import { useCardDrag } from '../composables/useCardDrag'
+import { FADE_DURATION, FLIP_RATIO, flipOf, FLYING_Z, HOVER_DURATION, MOVE_DURATION, poseVars, shatter, spawnScrapped } from '../lib/card-fx'
 import { emptyMotion } from '../lib/motion'
 import { NODE_ZONE } from '../lib/nodes'
+import { TweenTracker } from '../lib/tween-tracker'
 import CardNodeView from './CardNodeView.vue'
 
 const props = defineProps<{
@@ -36,173 +41,42 @@ const emit = defineEmits<{
 
 const root = ref<HTMLElement | null>(null)
 
-/** Время перелёта карты между зонами и быстрого отклика на наведение, секунды при speed = 1. */
-const MOVE_DURATION = 0.55
-const HOVER_DURATION = 0.18
-const FADE_DURATION = 0.3
-const FLIP_RATIO = 0.8
-/** Во время полёта карта лежит поверх всех остальных. */
-const FLYING_Z = 200
-
 interface Applied {
   pose: Pose
   zone: CardNode['zone']
 }
 
 const applied = new Map<string, Applied>()
-const pending: Promise<void>[] = []
+const tracker = new TweenTracker()
 let motion: Motion = emptyMotion()
 let snapNext = false
 
-/**
- * Добавляет твин в список ожидаемых. Колбэки, уже заданные у твина (снять z-index, закончить переворот),
- * сохраняются: eventCallback заменяет их, а без них карта навсегда остаётся в «летящем» состоянии
- * с 3D-контекстом, и текст на ней размыт.
- */
-function track(tween: gsap.core.Animation): void {
-  // Твин, завершившийся при создании (нулевая длительность), своих колбэков уже не вызовет: ждать его нельзя.
-  if (tween.duration() === 0)
-    return
-  const complete = tween.eventCallback('onComplete')
-  const interrupt = tween.eventCallback('onInterrupt')
-  pending.push(new Promise((resolve) => {
-    tween.eventCallback('onComplete', () => {
-      complete?.call(tween)
-      resolve()
-    })
-    // Перезапущенная твином карта (быстрое наведение, новый ход) не должна подвешивать очередь событий.
-    tween.eventCallback('onInterrupt', () => {
-      interrupt?.call(tween)
-      resolve()
-    })
-  }))
-}
-
-function poseVars(pose: Pose): gsap.TweenVars {
-  return { x: pose.x, y: pose.y, rotation: pose.rot, scale: pose.scale, opacity: pose.opacity }
-}
-
 function find(key: string): HTMLElement | null {
   return root.value?.querySelector<HTMLElement>(`[data-key="${CSS.escape(key)}"]`) ?? null
-}
-
-function flipOf(el: HTMLElement): HTMLElement | null {
-  return el.querySelector<HTMLElement>('[data-flip]')
 }
 
 function samePose(a: Pose, b: Pose): boolean {
   return a.x === b.x && a.y === b.y && a.rot === b.rot && a.scale === b.scale && a.opacity === b.opacity && a.z === b.z
 }
 
-/* ---------- Расщепление утилизированной карты ---------- */
-
-const SHARD_COLS = 4
-const SHARD_ROWS = 6
-/** При таком множителе скорости (prefers-reduced-motion) эффекты движения не показываются вовсе. */
-const REDUCED_SPEED = 10
-const rand = gsap.utils.random
-
-/**
- * Карта, уходящая в утиль, распадается на осколки: на месте, где она лежала, появляются копии карты, обрезанные по
- * клеткам сетки, и разлетаются вверх и в стороны, угасая. Оригинал при этом прячется. Вспышка - короткий
- * проблеск по контуру карты. Осколки - обычные DOM-копии, поэтому эффект не зависит от того, чем нарисована карта.
- */
-function shatter(el: HTMLElement): void {
-  const host = root.value
-  if (!host || props.speed >= REDUCED_SPEED)
-    return
-  const { speed } = props
-  const baseScale = Number(gsap.getProperty(el, 'scale'))
-  const parts: HTMLElement[] = []
-
-  const copy = (deep: boolean): HTMLElement => {
-    const part = el.cloneNode(deep) as HTMLElement
-    part.removeAttribute('data-key')
-    part.classList.remove('node--flipping')
-    part.querySelectorAll('.node__hit, .node__scrap').forEach(button => button.remove())
-    host.appendChild(part)
-    parts.push(part)
-    return part
-  }
-
-  const cleanup = (): void => {
-    for (const part of parts)
-      part.remove()
-  }
-
-  const timeline = gsap.timeline({ onComplete: cleanup, onInterrupt: cleanup })
-
-  const flash = copy(false)
-  flash.classList.add('node--flash')
-  timeline.fromTo(flash, { opacity: 0.95, scale: baseScale }, { opacity: 0, scale: baseScale * 1.1, duration: 0.3 / speed, ease: 'power2.out' }, 0)
-
-  const stepX = 100 / SHARD_COLS
-  const stepY = 100 / SHARD_ROWS
-  for (let row = 0; row < SHARD_ROWS; row++) {
-    for (let col = 0; col < SHARD_COLS; col++) {
-      const shard = copy(true)
-      shard.classList.add('node--shard')
-      shard.style.clipPath = `inset(${row * stepY}% ${100 - (col + 1) * stepX}% ${100 - (row + 1) * stepY}% ${col * stepX}%)`
-      gsap.set(shard, { transformOrigin: `${(col + 0.5) * stepX}% ${(row + 0.5) * stepY}%`, opacity: 1 })
-      const spreadX = (col + 0.5) / SHARD_COLS - 0.5
-      const spreadY = (row + 0.5) / SHARD_ROWS - 0.5
-      timeline.to(shard, {
-        x: `+=${spreadX * 120 + rand(-20, 20)}`,
-        y: `+=${spreadY * 60 - rand(20, 90)}`,
-        rotation: `+=${rand(-50, 50)}`,
-        scale: baseScale * rand(0.5, 0.9),
-        opacity: 0,
-        duration: rand(0.35, 0.5) / speed,
-        ease: 'power2.in',
-      }, (row * 0.015 + rand(0, 0.08)) / speed)
-    }
-  }
-
-  // Следующее событие не ждёт, пока осколки долетят: шаг очереди заканчивается, когда распад уже заметен.
-  pending.push(new Promise((resolve) => {
-    gsap.delayedCall(0.12 / speed, resolve)
-  }))
+/** Контекст эффектов собирается заново на каждый вызов: speed и слой могут меняться. */
+function fxContext(): FxContext | null {
+  return root.value ? { host: root.value, speed: props.speed, tracker } : null
 }
 
-/** Карта появилась уже утилизированной (из руки соперника или из глубины сброса): показывается и тут же распадается. */
-function spawnScrapped(el: HTMLElement, node: CardNode, hint: SpawnHint | undefined): void {
-  const toHeap = (): void => {
-    gsap.set(el, { ...poseVars(node.pose), zIndex: node.pose.z })
-  }
-  if (!hint || props.speed >= REDUCED_SPEED) {
-    toHeap()
-    return
-  }
+const drag = useCardDrag({
+  root,
+  speed: () => props.speed,
+  tracker,
+  find,
+  onDrag: state => emit('drag', state),
+  onDrop: node => emit('drop', node),
+})
 
-  const flip = flipOf(el)
-  const reveal = hint.faceDown && flip
-  // Карта из руки соперника сначала спускается из веера и переворачивается, чтобы было видно, что это за карта.
-  const at: Pose = reveal ? { ...hint.from, y: hint.from.y + 190, scale: 0.8, rot: 0 } : hint.from
-  gsap.set(el, { ...poseVars(at), opacity: 1, zIndex: FLYING_Z })
-  const finish = (): void => {
-    shatter(el)
-    toHeap()
-  }
-  if (!reveal) {
-    finish()
-    return
-  }
-  el.classList.add('node--flipping')
-  gsap.set(flip, { rotationY: 180 })
-  const endFlip = (): void => {
-    el.classList.remove('node--flipping')
-    gsap.set(flip, { clearProps: 'transform' })
-  }
-  track(gsap.to(flip, {
-    rotationY: 0,
-    duration: 0.2 / props.speed,
-    ease: 'power2.inOut',
-    onComplete: () => {
-      endFlip()
-      finish()
-    },
-    onInterrupt: endFlip,
-  }))
+function shatterCard(el: HTMLElement): void {
+  const fx = fxContext()
+  if (fx)
+    shatter(el, fx)
 }
 
 function spawn(el: HTMLElement, node: CardNode): void {
@@ -214,7 +88,9 @@ function spawn(el: HTMLElement, node: CardNode): void {
 
   const hint = motion.spawn.get(node.key)
   if (node.zone === NODE_ZONE.SCRAP) {
-    spawnScrapped(el, node, hint)
+    const fx = fxContext()
+    if (fx)
+      spawnScrapped(el, node.pose, hint, fx)
     return
   }
   const delay = (motion.delay.get(node.key) ?? 0) / props.speed
@@ -242,14 +118,14 @@ function spawn(el: HTMLElement, node: CardNode): void {
       gsap.set(el, { zIndex: node.pose.z })
     },
   })
-  track(tween)
+  tracker.track(tween)
 
   if (flips) {
     const endFlip = (): void => {
       el.classList.remove('node--flipping')
       gsap.set(flip, { clearProps: 'transform' })
     }
-    track(gsap.to(flip, { rotationY: 0, duration: duration * FLIP_RATIO, delay: delay + duration * (1 - FLIP_RATIO) / 2, ease: 'power2.inOut', onComplete: endFlip, onInterrupt: endFlip }))
+    tracker.track(gsap.to(flip, { rotationY: 0, duration: duration * FLIP_RATIO, delay: delay + duration * (1 - FLIP_RATIO) / 2, ease: 'power2.inOut', onComplete: endFlip, onInterrupt: endFlip }))
   }
 }
 
@@ -261,7 +137,7 @@ function move(el: HTMLElement, node: CardNode, previous: Applied): void {
 
   // Карта ушла в утиль: на месте, где она лежала, она распадается, а оригинал сразу переезжает в кучу невидимым.
   if (node.zone === NODE_ZONE.SCRAP && previous.zone !== NODE_ZONE.SCRAP) {
-    shatter(el)
+    shatterCard(el)
     // Мгновенный переезд: нулевой твин завершается при создании, ждать его в очереди нельзя (шаг завис бы до аварийного таймаута).
     gsap.to(el, { ...poseVars(node.pose), zIndex: node.pose.z, duration: 0, overwrite: 'auto' })
     return
@@ -283,127 +159,12 @@ function move(el: HTMLElement, node: CardNode, previous: Applied): void {
       gsap.set(el, { zIndex: node.pose.z })
     },
   })
-  track(tween)
-}
-
-/* ---------- Перетаскивание ---------- */
-
-/** Последняя известная модель каждой карты: колбэки Draggable живут дольше одного рендера. */
-const latest = new Map<string, CardNode>()
-const draggables = new Map<string, Draggable>()
-/** Карты, которые отпустили над зоной: ждём ответа сервера, чтобы вернуть на место, если команду не приняли. */
-const dropped = new Set<string>()
-let draggingKey: string | null = null
-let lastDragEnd = 0
-/** Сразу после перетаскивания браузер присылает click: он не должен играть карту второй раз. */
-const CLICK_AFTER_DRAG_MS = 250
-const MIN_DRAG_PX = 8
-const DRAG_Z = 400
-
-/** Координаты указателя в логических пикселях сцены (сцена масштабируется целиком, StageScaler). */
-function stagePoint(event: PointerEvent | MouseEvent): { x: number, y: number } | null {
-  const layerEl = root.value
-  if (!layerEl)
-    return null
-  const rect = layerEl.getBoundingClientRect()
-  const k = rect.width / layerEl.offsetWidth
-  return { x: (event.clientX - rect.left) / k, y: (event.clientY - rect.top) / k }
-}
-
-function isInside(node: CardNode, event: PointerEvent | MouseEvent): boolean {
-  const point = stagePoint(event)
-  return !!point && !!node.drag && insideAny(node.drag.rects, point.x, point.y)
-}
-
-function returnToPose(key: string): void {
-  const el = find(key)
-  const node = latest.get(key)
-  if (!el || !node)
-    return
-  track(gsap.to(el, { ...poseVars(node.pose), zIndex: node.pose.z, duration: MOVE_DURATION / 2 / props.speed, ease: 'power3.out', overwrite: 'auto' }))
-}
-
-function startDrag(key: string, el: HTMLElement): Draggable | undefined {
-  const trigger = el.querySelector<HTMLElement>('.node__hit')
-  if (!trigger)
-    return undefined
-  const [instance] = Draggable.create(el, {
-    type: 'x,y',
-    trigger,
-    minimumMovement: MIN_DRAG_PX,
-    zIndexBoost: false,
-    onPress() {
-      // Карта в полёте или в руке: перехватываем, чтобы твин не вырывал её из-под пальца.
-      gsap.killTweensOf(el, 'x,y')
-    },
-    onDragStart() {
-      const node = latest.get(key)
-      if (!node?.drag)
-        return
-      draggingKey = key
-      gsap.set(el, { zIndex: DRAG_Z })
-      // Карта руки выпрямляется и чуть вырастает: так видно, что её держат.
-      gsap.to(el, { rotation: 0, scale: node.pose.scale * 1.06, duration: HOVER_DURATION, overwrite: 'auto' })
-      emit('drag', { key, zone: node.drag.zone, rects: node.drag.rects, inside: false })
-    },
-    onDrag(event: PointerEvent) {
-      const node = latest.get(key)
-      if (node?.drag)
-        emit('drag', { key, zone: node.drag.zone, rects: node.drag.rects, inside: isInside(node, event) })
-    },
-    onDragEnd(event: PointerEvent) {
-      const node = latest.get(key)
-      draggingKey = null
-      lastDragEnd = performance.now()
-      emit('drag', null)
-      if (node?.drag && isInside(node, event)) {
-        dropped.add(key)
-        emit('drop', node)
-      }
-      else {
-        returnToPose(key)
-      }
-    },
-  })
-  return instance
-}
-
-/** Включает и выключает перетаскивание у карт в соответствии с их моделью (node.drag). */
-function syncDraggables(nodes: CardNode[]): void {
-  const keys = new Set<string>()
-  for (const node of nodes) {
-    keys.add(node.key)
-    latest.set(node.key, node)
-    const existing = draggables.get(node.key)
-    if (node.drag && !existing) {
-      const el = find(node.key)
-      const instance = el ? startDrag(node.key, el) : undefined
-      if (instance)
-        draggables.set(node.key, instance)
-    }
-    else if (!node.drag && existing) {
-      existing.kill()
-      draggables.delete(node.key)
-    }
-  }
-  for (const [key, instance] of draggables) {
-    if (!keys.has(key)) {
-      instance.kill()
-      draggables.delete(key)
-    }
-  }
-  for (const key of latest.keys()) {
-    if (!keys.has(key)) {
-      latest.delete(key)
-      dropped.delete(key)
-    }
-  }
+  tracker.track(tween)
 }
 
 function onNodeClick(node: CardNode): void {
-  if (performance.now() - lastDragEnd < CLICK_AFTER_DRAG_MS)
-    return
-  emit('click', node)
+  if (drag.clickAllowed())
+    emit('click', node)
 }
 
 function applyNodes(nodes: CardNode[]): void {
@@ -417,17 +178,16 @@ function applyNodes(nodes: CardNode[]): void {
     if (!previous) {
       spawn(el, node)
     }
-    else if (node.key === draggingKey) {
+    else if (drag.isDragging(node.key)) {
       // Карту держат в руке: позиции не трогаем, после броска она вернётся к последней известной.
     }
     else if (!samePose(previous.pose, node.pose)) {
-      dropped.delete(node.key)
+      drag.forgetDrop(node.key)
       move(el, node, previous)
     }
-    else if (dropped.has(node.key) && node.drag) {
+    else {
       // Карту отпустили над зоной, но команду не приняли (ввод снова открыт, поза та же): возвращаем.
-      dropped.delete(node.key)
-      returnToPose(node.key)
+      drag.returnRejected(node)
     }
     applied.set(node.key, { pose: node.pose, zone: node.zone })
   }
@@ -435,15 +195,11 @@ function applyNodes(nodes: CardNode[]): void {
     if (!keys.has(key))
       applied.delete(key)
   }
-  syncDraggables(nodes)
+  drag.sync(nodes)
   snapNext = false
 }
 
-onBeforeUnmount(() => {
-  for (const instance of draggables.values())
-    instance.kill()
-  draggables.clear()
-})
+onBeforeUnmount(() => drag.dispose())
 
 watch(() => props.nodes, applyNodes, { flush: 'post' })
 
@@ -467,7 +223,7 @@ function onLeave(el: Element, done: () => void): void {
     onComplete: done,
     onInterrupt: done,
   })
-  track(tween)
+  tracker.track(tween)
 }
 
 defineExpose({
@@ -488,8 +244,7 @@ defineExpose({
   /** Разрешается, когда завершились все анимации, начатые после последнего изменения списка карт. */
   async settled(): Promise<void> {
     await nextTick()
-    const running = pending.splice(0)
-    await Promise.all(running)
+    await tracker.settled()
   },
 })
 </script>

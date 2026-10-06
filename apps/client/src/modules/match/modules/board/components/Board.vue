@@ -7,14 +7,15 @@ import type { Command } from '@space/engine'
 import type { LegalIndex, TableState } from '../../table'
 import type { FieldFrame } from '../lib/layout'
 import type { Motion } from '../lib/motion'
-import type { CardNode, DragState, NavKey, NodeGroup } from '../lib/nodes'
+import type { CardNode, DragState } from '../lib/nodes'
 import type { PileId } from '../lib/piles'
 import { CARD_KIND, COMMAND_TYPE, getCard } from '@space/engine'
-import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
+import { computed, ref, useTemplateRef } from 'vue'
 import AppIcon from '@/common/ui/AppIcon.vue'
 import { ICON } from '@/common/ui/icons'
 import { CARD_FORM, CARD_SIZE, cardName, CardView } from '@/modules/cards'
 import { STAGE } from '../../../lib/rects'
+import { useBoardFocus } from '../composables/useBoardFocus'
 import {
   DROP_ZONE,
   fieldGeometry,
@@ -28,12 +29,12 @@ import {
   TRADE_SLOT_W,
   tradeSlotX,
 } from '../lib/layout'
-import { applyRoving, buildNodes, focusables, navigateTarget, NODE_CLICK, NODE_ZONE, tradeCaption } from '../lib/nodes'
+import { buildNodes, NODE_CLICK, NODE_ZONE, tradeCaption } from '../lib/nodes'
 import { PILE_ID } from '../lib/piles'
 import CardLayer from './CardLayer.vue'
 import PileStack from './PileStack.vue'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   table: TableState
   legal: LegalIndex
   /** Принимается ли сейчас ввод (очередь анимаций пуста и нет ожидающей команды). */
@@ -41,7 +42,11 @@ const props = defineProps<{
   /** Карты, выбранные в prompt сброса. */
   selectedCardIds: readonly string[]
   speed: number
-}>()
+  /** Можно ли играть и покупать перетаскиванием (клик и клавиатура работают всегда). */
+  dragEnabled?: boolean
+}>(), {
+  dragEnabled: true,
+})
 
 const emit = defineEmits<{
   command: [command: Command]
@@ -52,15 +57,21 @@ const emit = defineEmits<{
 const layer = useTemplateRef<InstanceType<typeof CardLayer>>('layer')
 const hoverKey = ref<string | null>(null)
 
-/** Какая карта группы входит в обход Tab: последняя, на которую приходил фокус. */
-const rememberedFocus = ref<Partial<Record<NodeGroup, string>>>({})
+const baseNodes = computed(() => {
+  const built = buildNodes(props.table, {
+    legal: props.legal,
+    interactive: props.interactive,
+    hoverKey: hoverKey.value,
+    selectedCardIds: props.selectedCardIds,
+  })
+  return props.dragEnabled ? built : built.map(node => (node.drag ? { ...node, drag: null } : node))
+})
 
-const nodes = computed(() => applyRoving(buildNodes(props.table, {
-  legal: props.legal,
-  interactive: props.interactive,
-  hoverKey: hoverKey.value,
-  selectedCardIds: props.selectedCardIds,
-}), rememberedFocus.value))
+// Клавиатурный фокус: roving tabindex, стрелки, возврат фокуса после хода.
+const { nodes, onFocused, onNavigate, focusGroup } = useBoardFocus({
+  baseNodes,
+  focusNode: key => layer.value?.focusNode(key),
+})
 
 const layout = computed(() => layoutOf(props.table))
 const trade = computed(() => layout.value.trade)
@@ -104,42 +115,6 @@ function onDrop(node: CardNode): void {
     emit('command', node.drag.command)
 }
 
-/* ---------- Клавиатура ---------- */
-
-/** Куда вернуть фокус, если сфокусированная карта пропала (её сыграли или купили): на ту же позицию группы. */
-const focused = ref<{ key: string, group: NodeGroup | null, index: number } | null>(null)
-
-function onFocused(node: CardNode): void {
-  if (node.group)
-    rememberedFocus.value = { ...rememberedFocus.value, [node.group]: node.key }
-  focused.value = { key: node.key, group: node.group, index: node.group ? focusables(nodes.value, node.group).findIndex(item => item.key === node.key) : -1 }
-}
-
-function onNavigate(node: CardNode, key: NavKey): void {
-  const target = navigateTarget(nodes.value, node, key)
-  if (target)
-    layer.value?.focusNode(target.key)
-}
-
-watch(nodes, async () => {
-  const last = focused.value
-  if (!last?.group)
-    return
-  await nextTick()
-  const active = document.activeElement
-  // Фокус остался на странице (например, на кнопке «Конец хода») или внутри окна - его не трогаем.
-  if (active && active !== document.body)
-    return
-  if (document.querySelector('[role="dialog"]'))
-    return
-  const row = focusables(nodes.value, last.group)
-  if (row.some(item => item.key === last.key))
-    return
-  const next = row[Math.min(Math.max(last.index, 0), row.length - 1)]
-  if (next)
-    layer.value?.focusNode(next.key)
-})
-
 /**
  * Крупный просмотр карты, на которую наведён курсор: на поле и в ряду карты мелкие, текст способностей не
  * прочитать. Карты руки и так крупные, стопки и утиль - просто картинки без наведения.
@@ -164,14 +139,6 @@ function onClick(node: CardNode): void {
 function onScrap(node: CardNode): void {
   if (node.scrapCommand)
     emit('command', node.scrapCommand)
-}
-
-/** Переводит фокус в группу карт: на запомненную в ней или самую левую (например, в руку, когда открылся запрос на сброс). */
-function focusGroup(group: NodeGroup): void {
-  const row = focusables(nodes.value, group)
-  const target = row.find(node => node.key === rememberedFocus.value[group]) ?? row[0]
-  if (target)
-    layer.value?.focusNode(target.key)
 }
 
 defineExpose({
