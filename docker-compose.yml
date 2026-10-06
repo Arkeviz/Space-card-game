@@ -1,4 +1,4 @@
-# Весь стек одной командой: `pnpm docker:up` -> http://localhost:8080
+# Весь стек одной командой: `pnpm docker:up` -> http://localhost:8181
 # Только база для разработки (сервер и клиент запускаются из IDE): `pnpm db:up`.
 # Пароли и лимиты берутся из файла .env рядом с этим файлом (образец - .env.example).
 name: space-card-game
@@ -56,7 +56,7 @@ services:
       dockerfile: apps/client/Dockerfile
     restart: unless-stopped
     ports:
-      - '8080:80'
+      - '8181:80'
     depends_on:
       server:
         condition: service_healthy

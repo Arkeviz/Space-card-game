@@ -27,7 +27,7 @@ pnpm dev:server                           # apps/server dev (node --watch)
 pnpm dev:client                           # apps/client dev (vite)
 pnpm db:up                                # только PostgreSQL в Docker (localhost:5432), для разработки с сохранением партий
 pnpm db:generate                          # новая SQL-миграция по схеме Drizzle (apps/server/drizzle)
-pnpm docker:up                            # весь стек в Docker (db + server + client), http://localhost:8080
+pnpm docker:up                            # весь стек в Docker (db + server + client), http://localhost:8181
 ```
 
 `docker-compose.yml` берёт пароли базы и лимиты из корневого `.env` (образец - `.env.example`, без паролей compose не запускается).

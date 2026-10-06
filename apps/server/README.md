@@ -168,7 +168,7 @@ Docker (например, `172.17.0.1`), поэтому в `docker-compose.yml` 
 ```bash
 cp .env.example .env   # пароли базы (POSTGRES_PASSWORD, APP_DB_PASSWORD): без них compose не запускается
 pnpm db:up             # только база (порт 5432 на localhost); сервер и клиент - из IDE: DATABASE_URL в apps/server/.env
-pnpm docker:up         # весь стек, http://localhost:8080
+pnpm docker:up         # весь стек, http://localhost:8181
 ```
 
 **Роли базы.** Суперпользователь `postgres` (пароль `POSTGRES_PASSWORD`) нужен только для обслуживания и интеграционного

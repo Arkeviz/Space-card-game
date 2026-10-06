@@ -46,7 +46,7 @@ cp apps/server/.env.example apps/server/.env            # DATABASE_URL для с
 
 ```bash
 cp .env.example .env   # если ещё нет: пароли базы
-pnpm docker:up         # PostgreSQL + сервер + клиент, http://localhost:8080
+pnpm docker:up         # PostgreSQL + сервер + клиент, http://localhost:8181
 ```
 
 ### GitHub Pages (необязательно)

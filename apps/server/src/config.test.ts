@@ -17,9 +17,9 @@ describe('loadConfig', () => {
   })
 
   it('читает порт, строку подключения и срок хранения', () => {
-    expect(loadConfig({ PORT: '8080', DATABASE_URL: ' postgres://u:p@db/space ', MATCH_RETENTION_DAYS: '7' })).toEqual({
+    expect(loadConfig({ PORT: '8181', DATABASE_URL: ' postgres://u:p@db/space ', MATCH_RETENTION_DAYS: '7' })).toEqual({
       ...DEFAULTS,
-      port: 8080,
+      port: 8181,
       databaseUrl: 'postgres://u:p@db/space',
       retentionDays: 7,
     })
