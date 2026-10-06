@@ -10,7 +10,7 @@ import starNest from '../lib/star-nest.glsl?raw'
 
 <template>
   <div class="backdrop space-backdrop">
-    <ShaderToy :shader-code="starNest" :brightness="0.2" :speed="0.01" :pixel-ratio="1.5" />
+    <ShaderToy :shader-code="starNest" :brightness="0.4" :speed="0.02" :pixel-ratio="1.5" />
   </div>
 </template>
 
