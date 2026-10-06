@@ -1,0 +1,49 @@
+name: Deploy to GitHub Pages
+
+# Публикует только клиент (статику). Игровой сервер на Pages запустить нельзя: адрес своего сервера
+# задаётся переменной репозитория PAGES_WS_URL (например, wss://game.example.com/ws).
+#
+# Автоматический деплой при каждом пуше в main включается флагом: Settings -> Secrets and variables -> Actions ->
+# Variables -> DEPLOY_PAGES = true. Без флага работает только ручной запуск (Actions -> Deploy to GitHub Pages -> Run workflow).
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    if: github.event_name == 'workflow_dispatch' || vars.DEPLOY_PAGES == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @space/client build
+        env:
+          # Проектный сайт лежит по адресу https://<владелец>.github.io/<репозиторий>/
+          VITE_BASE: /${{ github.event.repository.name }}/
+          VITE_WS_URL: ${{ vars.PAGES_WS_URL }}
+      # Pages не умеет отдавать index.html для неизвестных путей, но отдаёт 404.html: так работают прямые ссылки (/cards).
+      - run: cp apps/client/dist/index.html apps/client/dist/404.html
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: apps/client/dist
+      - id: deployment
+        uses: actions/deploy-pages@v4

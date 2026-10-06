@@ -9,5 +9,6 @@ function defaultWsUrl(): string {
 }
 
 export const appConfig = {
-  wsUrl: import.meta.env.VITE_WS_URL ?? defaultWsUrl(),
+  // Пустая строка (переменная задана, но без значения, как в CI) считается незаданной.
+  wsUrl: import.meta.env.VITE_WS_URL || defaultWsUrl(),
 }

@@ -101,4 +101,4 @@ pnpm --filter @space/client typecheck  # vue-tsc --noEmit
 
 URL WebSocket-сервера (`app/app-config.ts`): переменная `VITE_WS_URL`, если задана; при разработке - `ws://localhost:3001/ws`;
 в собранном приложении - тот же хост, с которого открыта страница (`ws://` или `wss://` по протоколу страницы). В Docker `/ws`
-проксирует nginx (`nginx.conf`), поэтому ничего настраивать не нужно. Образ клиента собирает `Dockerfile` (Vite -> nginx).
+проксирует nginx (`nginx.conf`), поэтому ничего настраивать не нужно. Для GitHub Pages сборка идёт с `VITE_BASE=/<репозиторий>/` (`base` в `vite.config.ts`, роутер берёт `import.meta.env.BASE_URL`) и `VITE_WS_URL` из переменной репозитория `PAGES_WS_URL` (`.github/workflows/pages.yml`). Образ клиента собирает `Dockerfile` (Vite -> nginx).
