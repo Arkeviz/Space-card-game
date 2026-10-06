@@ -22,6 +22,8 @@ export interface Settings {
   hotkeys: boolean
   /** Перетаскивание карт мышью (клик и клавиатура работают всегда). */
   dragAndDrop: boolean
+  /** Анимированный фон (шейдер) на всех экранах; выключен - прежний статичный фон. */
+  animatedBackground: boolean
 }
 
 export const DEFAULT_SETTINGS: Readonly<Settings> = {
@@ -31,6 +33,7 @@ export const DEFAULT_SETTINGS: Readonly<Settings> = {
   endTurnWarning: true,
   hotkeys: true,
   dragAndDrop: true,
+  animatedBackground: true,
 }
 
 const ANIMATION_MODES: readonly string[] = Object.values(ANIMATION_MODE)
@@ -56,6 +59,7 @@ export function parseSettings(raw: unknown): Settings {
     endTurnWarning: bool(source.endTurnWarning, DEFAULT_SETTINGS.endTurnWarning),
     hotkeys: bool(source.hotkeys, DEFAULT_SETTINGS.hotkeys),
     dragAndDrop: bool(source.dragAndDrop, DEFAULT_SETTINGS.dragAndDrop),
+    animatedBackground: bool(source.animatedBackground, DEFAULT_SETTINGS.animatedBackground),
   }
 }
 

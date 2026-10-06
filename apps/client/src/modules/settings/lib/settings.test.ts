@@ -10,7 +10,7 @@ describe('parseSettings', () => {
   })
 
   it('корректные значения сохраняются', () => {
-    const custom = { playerName: 'Алиса', animationSpeed: 1.5, animationMode: ANIMATION_MODE.REDUCED, endTurnWarning: false, hotkeys: false, dragAndDrop: false }
+    const custom = { playerName: 'Алиса', animationSpeed: 1.5, animationMode: ANIMATION_MODE.REDUCED, endTurnWarning: false, hotkeys: false, dragAndDrop: false, animatedBackground: false }
     expect(parseSettings(custom)).toEqual(custom)
   })
 

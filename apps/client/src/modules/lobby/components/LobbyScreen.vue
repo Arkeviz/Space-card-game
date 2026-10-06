@@ -4,8 +4,8 @@ import { computed, ref } from 'vue'
 import AppIcon from '@/common/ui/AppIcon.vue'
 import GameButton from '@/common/ui/GameButton.vue'
 import { ICON } from '@/common/ui/icons'
+import SpaceBackdrop from '@/common/ui/SpaceBackdrop.vue'
 import StageScaler from '@/common/ui/StageScaler.vue'
-import LobbyBackdrop from './LobbyBackdrop.vue'
 
 const props = defineProps<{
   /** Есть ли связь с сервером. */
@@ -41,7 +41,7 @@ function submit(): void {
 <template>
   <StageScaler>
     <template #backdrop>
-      <LobbyBackdrop />
+      <SpaceBackdrop />
     </template>
     <main class="lobby">
       <div class="lobby__hero">
@@ -186,7 +186,7 @@ function submit(): void {
   justify-content: center;
   width: 620px;
   padding: 72px 56px 48px;
-  background: rgba(7, 12, 24, 0.86);
+  background: rgba(7, 12, 24, 0.67);
   box-shadow: inset 1px 0 0 rgba(79, 216, 255, 0.22);
 }
 

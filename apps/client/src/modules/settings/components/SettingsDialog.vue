@@ -39,7 +39,7 @@ const mode = computed({
 })
 
 /** Переключатель «включено/выключено» для булевой настройки: ChipGroup работает со строками. */
-function toggle(key: 'endTurnWarning' | 'hotkeys' | 'dragAndDrop') {
+function toggle(key: 'endTurnWarning' | 'hotkeys' | 'dragAndDrop' | 'animatedBackground') {
   return computed({
     get: () => [settings.value[key] ? 'on' : 'off'],
     set: ([value]) => {
@@ -52,6 +52,7 @@ function toggle(key: 'endTurnWarning' | 'hotkeys' | 'dragAndDrop') {
 const endTurnWarning = toggle('endTurnWarning')
 const hotkeys = toggle('hotkeys')
 const dragAndDrop = toggle('dragAndDrop')
+const animatedBackground = toggle('animatedBackground')
 
 /** Сбрасывает всё, кроме имени: оно вводится отдельно и в настройках не показывается. */
 function reset(): void {
@@ -119,6 +120,18 @@ function reset(): void {
         </p>
       </div>
       <ChipGroup v-model="dragAndDrop" label="Перетаскивание карт" :options="switchOptions" />
+    </section>
+
+    <section class="row">
+      <div class="row__text">
+        <h3 class="row__name">
+          Анимированный фон
+        </h3>
+        <p class="row__hint">
+          Движущийся звёздный фон на всех экранах. Выключите, чтобы вернуть прежний статичный фон: так и нагрузка на видеокарту меньше.
+        </p>
+      </div>
+      <ChipGroup v-model="animatedBackground" label="Анимированный фон" :options="switchOptions" />
     </section>
 
     <template #footer>

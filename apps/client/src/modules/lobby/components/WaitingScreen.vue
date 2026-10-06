@@ -5,10 +5,9 @@ import { useTick } from '@/common/composables/useTick'
 import AppIcon from '@/common/ui/AppIcon.vue'
 import GameButton from '@/common/ui/GameButton.vue'
 import { ICON } from '@/common/ui/icons'
+import SpaceBackdrop from '@/common/ui/SpaceBackdrop.vue'
 import StageScaler from '@/common/ui/StageScaler.vue'
 import { formatElapsed } from '@/common/utilities/clock'
-import LobbyBackdrop from './LobbyBackdrop.vue'
-import OrbitDecor from './OrbitDecor.vue'
 
 /**
  * Экран ожидания соперника. С кодом - матч создан, код нужно отправить второму игроку; без кода (null) - идёт
@@ -33,11 +32,9 @@ const elapsed = computed(() => formatElapsed(now.value.getTime() - startedAt))
 <template>
   <StageScaler>
     <template #backdrop>
-      <LobbyBackdrop />
+      <SpaceBackdrop />
     </template>
     <main class="wait">
-      <OrbitDecor hollow />
-
       <p class="wait__brand">
         <AppIcon :name="ICON.LOGO" :size="30" :stroke="1.4" class="wait__logo" />
         <span class="wait__brand-name">ЗВЁЗДНЫЕ ИМПЕРИИ</span>
