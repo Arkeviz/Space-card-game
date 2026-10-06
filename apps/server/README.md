@@ -201,8 +201,6 @@ DROP ROLE migrator;
 `apps/server/Dockerfile` сохраняет раскладку монорепозитория (`packages/*`, `apps/server`): Node запускает `.ts` напрямую и не
 снимает типы с файлов внутри `node_modules`, а workspace-пакеты - ссылки на `packages/*` с реальным путём вне `node_modules`.
 CI (`.github/workflows/ci.yml`): lint, типы и тесты (с сервисом postgres для интеграционного теста) и сборка обоих образов без публикации.
-Экшены закреплены по SHA коммита (базовые образы - обычными тегами); обновления раз в неделю предлагает
-Dependabot (`.github/dependabot.yml`).
 
 ## Известные ограничения
 

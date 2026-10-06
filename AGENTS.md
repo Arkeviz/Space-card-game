@@ -33,7 +33,7 @@ pnpm docker:up                            # весь стек в Docker (db + se
 `docker-compose.yml` берёт пароли базы и лимиты из корневого `.env` (образец - `.env.example`, без паролей compose не запускается).
 Интеграционный тест хранилища идёт против настоящего PostgreSQL, если задан `TEST_DATABASE_URL` (после `pnpm db:up`:
 `postgres://postgres:<POSTGRES_PASSWORD>@localhost:5432/space` - тесту нужен суперпользователь, он создаёт временную базу); иначе пропускается.
-CI - `.github/workflows/ci.yml` (lint, типы, тесты, сборка образов без публикации; экшены закреплены по SHA, обновляет Dependabot).
+CI - `.github/workflows/ci.yml` (lint, типы, тесты, сборка образов без публикации).
 
 Один пакет / один файл теста:
 
