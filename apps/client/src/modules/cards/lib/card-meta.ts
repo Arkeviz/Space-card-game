@@ -11,7 +11,7 @@ import { circlePath, ICON } from '@/common/ui/icons'
 /** Рабочий перевод названий. Движок хранит английские; нет перевода - показывается английское название. */
 const CARD_NAME_RU: Readonly<Record<string, string>> = {
   'scout': 'Разведчик',
-  'viper': 'Гадюка',
+  'viper': 'Штурмовик',
   'explorer': 'Исследователь',
   // Торговая федерация
   'federation-shuttle': 'Челнок Федерации',
