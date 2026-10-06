@@ -1,4 +1,4 @@
-import * as v from 'valibot'
+import * as z from 'zod'
 
 /** Heartbeat useWebSocket: клиент шлёт PING, сервер отвечает PONG. */
 export const HEARTBEAT = {
@@ -6,7 +6,7 @@ export const HEARTBEAT = {
   PONG: 'pong',
 } as const
 
-export const PingSchema = v.literal(HEARTBEAT.PING)
-export const PongSchema = v.literal(HEARTBEAT.PONG)
+export const PingSchema = z.literal(HEARTBEAT.PING)
+export const PongSchema = z.literal(HEARTBEAT.PONG)
 
-export const isPing = (value: unknown): value is typeof HEARTBEAT.PING => v.is(PingSchema, value)
+export const isPing = (value: unknown): value is typeof HEARTBEAT.PING => PingSchema.safeParse(value).success

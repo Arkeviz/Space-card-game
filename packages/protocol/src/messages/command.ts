@@ -1,30 +1,30 @@
 import type { Command } from '@space/engine'
 import { ABILITY_KIND, COMMAND_TYPE } from '@space/engine'
-import * as v from 'valibot'
+import * as z from 'zod'
 
-const cardId = v.pipe(v.string(), v.minLength(1))
+const cardId = z.string().min(1)
 /** Первый prompt в партии получает id 1 (счётчик увеличивается до присвоения), 0 никогда не бывает валиден. */
-const promptId = v.pipe(v.number(), v.integer(), v.minValue(1))
-const abilityKind = v.picklist([ABILITY_KIND.BASIC, ABILITY_KIND.ALLY, ABILITY_KIND.SCRAP])
+const promptId = z.number().int().min(1)
+const abilityKind = z.enum([ABILITY_KIND.BASIC, ABILITY_KIND.ALLY, ABILITY_KIND.SCRAP])
 
 /** Схема команды игрока. Зеркалит Command из @space/engine - при расхождении typecheck укажет на несоответствие. */
-export const CommandSchema = v.variant('type', [
-  v.object({ type: v.literal(COMMAND_TYPE.PLAY_CARD), cardId }),
-  v.object({ type: v.literal(COMMAND_TYPE.BUY), cardId }),
-  v.object({ type: v.literal(COMMAND_TYPE.BUY_EXPLORER) }),
-  v.object({ type: v.literal(COMMAND_TYPE.ACTIVATE), cardId, ability: abilityKind }),
-  v.object({ type: v.literal(COMMAND_TYPE.ATTACK_PLAYER), amount: v.pipe(v.number(), v.integer(), v.minValue(1)) }),
-  v.object({ type: v.literal(COMMAND_TYPE.ATTACK_BASE), cardId }),
-  v.object({ type: v.literal(COMMAND_TYPE.CHOOSE_OPTION), promptId, index: v.pipe(v.number(), v.integer(), v.minValue(0)) }),
-  v.object({ type: v.literal(COMMAND_TYPE.CHOOSE_CARD), promptId, cardId }),
-  v.object({ type: v.literal(COMMAND_TYPE.CHOOSE_CARDS), promptId, cardIds: v.pipe(v.array(cardId), v.minLength(1), v.maxLength(20)) }),
-  v.object({ type: v.literal(COMMAND_TYPE.SKIP), promptId }),
-  v.object({ type: v.literal(COMMAND_TYPE.END_TURN) }),
-  v.object({ type: v.literal(COMMAND_TYPE.CONCEDE) }),
+export const CommandSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal(COMMAND_TYPE.PLAY_CARD), cardId }),
+  z.object({ type: z.literal(COMMAND_TYPE.BUY), cardId }),
+  z.object({ type: z.literal(COMMAND_TYPE.BUY_EXPLORER) }),
+  z.object({ type: z.literal(COMMAND_TYPE.ACTIVATE), cardId, ability: abilityKind }),
+  z.object({ type: z.literal(COMMAND_TYPE.ATTACK_PLAYER), amount: z.number().int().min(1) }),
+  z.object({ type: z.literal(COMMAND_TYPE.ATTACK_BASE), cardId }),
+  z.object({ type: z.literal(COMMAND_TYPE.CHOOSE_OPTION), promptId, index: z.number().int().min(0) }),
+  z.object({ type: z.literal(COMMAND_TYPE.CHOOSE_CARD), promptId, cardId }),
+  z.object({ type: z.literal(COMMAND_TYPE.CHOOSE_CARDS), promptId, cardIds: z.array(cardId).min(1).max(20) }),
+  z.object({ type: z.literal(COMMAND_TYPE.SKIP), promptId }),
+  z.object({ type: z.literal(COMMAND_TYPE.END_TURN) }),
+  z.object({ type: z.literal(COMMAND_TYPE.CONCEDE) }),
 ])
 
 /** Проверяет и приводит произвольные данные к Command. Возвращает null, если форма не совпала. */
 export function parseCommand(data: unknown): Command | null {
-  const result = v.safeParse(CommandSchema, data)
-  return result.success ? (result.output as Command) : null
+  const result = CommandSchema.safeParse(data)
+  return result.success ? (result.data as Command) : null
 }

@@ -1,4 +1,4 @@
-import * as v from 'valibot'
+import * as z from 'zod'
 import { CommandSchema } from './command.ts'
 
 export const CLIENT_MESSAGE = {
@@ -25,30 +25,28 @@ export const CLIENT_MESSAGE = {
 /** Максимальная длина имени игрока (клиент берёт её для maxlength поля ввода). */
 export const PLAYER_NAME_MAX_LENGTH = 20
 
-const nonEmptyString = v.pipe(v.string(), v.minLength(1))
+const nonEmptyString = z.string().min(1)
 
 /** Имя игрока: без пробелов по краям, 1..PLAYER_NAME_MAX_LENGTH символов, без управляющих и невидимых символов. */
-const PlayerNameSchema = v.pipe(
-  v.string(),
-  v.trim(),
-  v.minLength(1),
-  v.maxLength(PLAYER_NAME_MAX_LENGTH),
-  v.regex(/^\P{C}+$/u),
-)
+const PlayerNameSchema = z.string()
+  .trim()
+  .min(1)
+  .max(PLAYER_NAME_MAX_LENGTH)
+  .regex(/^\P{C}+$/u)
 
-const ClientMessageSchema = v.variant('type', [
-  v.object({ type: v.literal(CLIENT_MESSAGE.CREATE_MATCH), name: PlayerNameSchema }),
-  v.object({ type: v.literal(CLIENT_MESSAGE.JOIN_MATCH), code: nonEmptyString, name: PlayerNameSchema }),
-  v.object({ type: v.literal(CLIENT_MESSAGE.FIND_MATCH), name: PlayerNameSchema }),
-  v.object({ type: v.literal(CLIENT_MESSAGE.CANCEL_SEARCH) }),
-  v.object({ type: v.literal(CLIENT_MESSAGE.RECONNECT), matchId: nonEmptyString, token: nonEmptyString }),
-  v.object({ type: v.literal(CLIENT_MESSAGE.LEAVE_MATCH) }),
-  v.object({ type: v.literal(CLIENT_MESSAGE.REMATCH) }),
-  v.object({ type: v.literal(CLIENT_MESSAGE.COMMAND), commandId: nonEmptyString, command: CommandSchema }),
-  v.object({ type: v.literal(CLIENT_MESSAGE.SYNC) }),
+const ClientMessageSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal(CLIENT_MESSAGE.CREATE_MATCH), name: PlayerNameSchema }),
+  z.object({ type: z.literal(CLIENT_MESSAGE.JOIN_MATCH), code: nonEmptyString, name: PlayerNameSchema }),
+  z.object({ type: z.literal(CLIENT_MESSAGE.FIND_MATCH), name: PlayerNameSchema }),
+  z.object({ type: z.literal(CLIENT_MESSAGE.CANCEL_SEARCH) }),
+  z.object({ type: z.literal(CLIENT_MESSAGE.RECONNECT), matchId: nonEmptyString, token: nonEmptyString }),
+  z.object({ type: z.literal(CLIENT_MESSAGE.LEAVE_MATCH) }),
+  z.object({ type: z.literal(CLIENT_MESSAGE.REMATCH) }),
+  z.object({ type: z.literal(CLIENT_MESSAGE.COMMAND), commandId: nonEmptyString, command: CommandSchema }),
+  z.object({ type: z.literal(CLIENT_MESSAGE.SYNC) }),
 ])
 
-export type ClientMessage = v.InferOutput<typeof ClientMessageSchema>
+export type ClientMessage = z.output<typeof ClientMessageSchema>
 
 /** Разбирает и проверяет сырой текст WS-сообщения от клиента. null - невалидный JSON или форма не совпала. */
 export function parseClientMessage(raw: string): ClientMessage | null {
@@ -59,6 +57,6 @@ export function parseClientMessage(raw: string): ClientMessage | null {
   catch {
     return null
   }
-  const result = v.safeParse(ClientMessageSchema, data)
-  return result.success ? result.output : null
+  const result = ClientMessageSchema.safeParse(data)
+  return result.success ? result.data : null
 }

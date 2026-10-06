@@ -18,7 +18,7 @@
 | Пакет | Что внутри |
 | --- | --- |
 | `packages/engine` | правила игры: чистый TypeScript без ввода-вывода |
-| `packages/protocol` | схемы сообщений клиент/сервер (Valibot) |
+| `packages/protocol` | схемы сообщений клиент/сервер (Zod) |
 | `apps/server` | Fastify, WebSocket, PostgreSQL через Drizzle |
 | `apps/client` | Vue 3, Vite, Pinia, GSAP, структура по [FEOD](https://feod.zede169778.workers.dev/) |
 

@@ -1,6 +1,6 @@
 # @space/protocol
 
-Контракт сообщений между клиентом и сервером: схемы Valibot и их типы.
+Контракт сообщений между клиентом и сервером: схемы Zod и их типы.
 
 ## Структура
 
@@ -19,7 +19,7 @@ src/
 
 ## Клиент -> сервер: `client.ts` + `command.ts`
 
-Всё, что приходит от клиента, - непроверенные сетевые данные, поэтому у каждого сообщения есть схема Valibot.
+Всё, что приходит от клиента, - непроверенные сетевые данные, поэтому у каждого сообщения есть схема Zod.
 `parseClientMessage(raw: string)` разбирает сырой текст WS-фрейма и возвращает `ClientMessage | null`.
 
 | `type` | Поля | Назначение |
@@ -43,7 +43,7 @@ src/
 
 ## Сервер -> клиент: `server.ts`
 
-Типы (`JoinedMessage`, `UpdateMessage`, `OpponentStatusMessage`, `SearchStatusMessage`, `RematchStatusMessage`, `AckMessage`, `RejectMessage`, `ErrorMessage`) есть, но схем Valibot для них
+Типы (`JoinedMessage`, `UpdateMessage`, `OpponentStatusMessage`, `SearchStatusMessage`, `RematchStatusMessage`, `AckMessage`, `RejectMessage`, `ErrorMessage`) есть, но схем Zod для них
 **нет**: сервер - доверенный источник, его собственную форму сообщений уже гарантирует TypeScript в момент отправки.
 Если понадобится защита от багов на стороне клиента (например, при парсинге `update`), это можно добавить позже.
 

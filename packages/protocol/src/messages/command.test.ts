@@ -45,7 +45,7 @@ describe('parseCommand', () => {
   })
 
   it('не пропускает через end_turn лишние поля молча', () => {
-    // valibot v.object по умолчанию отбрасывает неизвестные ключи - фиксируем это поведение явно.
+    // z.object по умолчанию отбрасывает неизвестные ключи - фиксируем это поведение явно.
     expect(parseCommand({ type: COMMAND_TYPE.END_TURN, extra: 'x' })).toEqual({ type: COMMAND_TYPE.END_TURN })
   })
 })

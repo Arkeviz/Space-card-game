@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Веб-карточная игра (Vue 3 + Node), аналог настольной игры «Звёздные империи» (Star Realms), только мультиплеер 1 на 1. pnpm-монорепозиторий:
 
 - `packages/engine` - чистые правила игры (TypeScript, без ввода-вывода). Работает на сервере.
-- `packages/protocol` - схемы сообщений клиент/сервер (Valibot).
+- `packages/protocol` - схемы сообщений клиент/сервер (Zod).
 - `apps/server` - Fastify + `@fastify/websocket`.
 - `apps/client` - Vue 3 + Vite, структура по [FEOD](https://feod.zede169778.workers.dev/).
 

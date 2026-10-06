@@ -12,6 +12,6 @@
   },
   "dependencies": {
     "@space/engine": "workspace:*",
-    "valibot": "^1.5.0"
+    "zod": "^4.6.5"
   }
 }
