@@ -35,12 +35,17 @@ export const TOKEN_MAX_LENGTH = 128
 
 const boundedString = (max: number) => z.string().min(1).max(max)
 
-/** Имя игрока: без пробелов по краям, 1..PLAYER_NAME_MAX_LENGTH символов, без управляющих и невидимых символов. */
+/**
+ * Имена, которые сервер даёт игроку, не указавшему своё: по номеру места (создатель матча - первый).
+ * Пустое имя в сообщении означает «своего нет».
+ */
+export const DEFAULT_PLAYER_NAMES = ['Митяй', 'Валера'] as const
+
+/** Имя игрока: без пробелов по краям, до PLAYER_NAME_MAX_LENGTH символов (пустое - имя по умолчанию), без управляющих и невидимых символов. */
 const PlayerNameSchema = z.string()
   .trim()
-  .min(1)
   .max(PLAYER_NAME_MAX_LENGTH)
-  .regex(/^\P{C}+$/u)
+  .regex(/^\P{C}*$/u)
 
 const ClientMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal(CLIENT_MESSAGE.CREATE_MATCH), name: PlayerNameSchema }),

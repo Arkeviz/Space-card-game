@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ANIMATION_MODE, cleanPlayerName, DEFAULT_PLAYER_NAME, DEFAULT_SETTINGS, motionFactor, parseSettings, playerNameOf, REDUCED_MOTION_FACTOR } from './settings'
+import { ANIMATION_MODE, cleanPlayerName, DEFAULT_SETTINGS, motionFactor, parseSettings, REDUCED_MOTION_FACTOR } from './settings'
 
 describe('parseSettings', () => {
   it('не объект или пустой объект - настройки по умолчанию', () => {
@@ -36,14 +36,6 @@ describe('cleanPlayerName', () => {
   it('обрезает по пределу протокола, не разрывая символы вне BMP', () => {
     const long = '🚀'.repeat(30)
     expect([...cleanPlayerName(long)]).toHaveLength(20)
-  })
-})
-
-describe('playerNameOf', () => {
-  it('пустое имя заменяется именем по умолчанию', () => {
-    expect(playerNameOf({ playerName: '' })).toBe(DEFAULT_PLAYER_NAME)
-    expect(playerNameOf({ playerName: '   ' })).toBe(DEFAULT_PLAYER_NAME)
-    expect(playerNameOf({ playerName: 'Боб' })).toBe('Боб')
   })
 })
 

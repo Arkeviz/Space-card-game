@@ -449,6 +449,22 @@ describe('matchManager: выход из матча', () => {
 })
 
 describe('matchManager: быстрый поиск', () => {
+  it('игрок без имени получает имя по умолчанию для своего места: Митяй - первый, Валера - второй', () => {
+    const manager = new MatchManager({ firstPlayer: 0 })
+    const socket0 = fakeSocket()
+    const { room } = manager.createMatch(socket0, '')
+    manager.joinMatch(fakeSocket(), room.code, '')
+    expect(socket0.lastOf(SERVER_MESSAGE.UPDATE).names).toEqual(['Митяй', 'Валера'])
+  })
+
+  it('свои имена не заменяются: по умолчанию называют только того, кто имя не указал', () => {
+    const manager = new MatchManager({ firstPlayer: 0 })
+    const socket0 = fakeSocket()
+    const { room } = manager.createMatch(socket0, 'Алиса')
+    manager.joinMatch(fakeSocket(), room.code, '')
+    expect(socket0.lastOf(SERVER_MESSAGE.UPDATE).names).toEqual(['Алиса', 'Валера'])
+  })
+
   it('первый встаёт в очередь, второй сводится с ним: оба получают JOINED и партию, имена сохраняются', () => {
     const manager = new MatchManager({ firstPlayer: 0 })
     const a = fakeSocket()

@@ -4,7 +4,7 @@ import type { WebSocket } from 'ws'
 import { Buffer } from 'node:buffer'
 import { createHash, randomBytes, randomInt, randomUUID, timingSafeEqual } from 'node:crypto'
 import { COMMAND_TYPE } from '@space/engine'
-import { END_REASON } from '@space/protocol'
+import { DEFAULT_PLAYER_NAMES, END_REASON } from '@space/protocol'
 
 /** Символы без похожих друг на друга: без 0/O, 1/I/L. */
 const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
@@ -74,12 +74,12 @@ function createSeat(): Seat {
   return { claimed: false, left: false, name: '', socket: null, tokenHash: '', disconnectTimer: null, disconnectDeadline: null }
 }
 
-/** Занимает место и возвращает открытый токен (хэш остаётся в месте). */
-export function claimSeat(seat: Seat, socket: WebSocket, name: string): string {
+/** Занимает место и возвращает открытый токен (хэш остаётся в месте). Пустое имя заменяется именем по умолчанию для этого места. */
+export function claimSeat(seat: Seat, seatIndex: PlayerId, socket: WebSocket, name: string): string {
   const token = generateToken()
   seat.claimed = true
   seat.left = false
-  seat.name = name
+  seat.name = name || DEFAULT_PLAYER_NAMES[seatIndex]
   seat.socket = socket
   seat.tokenHash = hashToken(token)
   return token

@@ -1,16 +1,18 @@
 <script setup lang="ts">
 import type { MatchError } from '@space/protocol'
-import { MATCH_ERROR } from '@space/protocol'
+import { DEFAULT_PLAYER_NAMES, MATCH_ERROR } from '@space/protocol'
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useGameConnection } from '@/modules/connection'
 import { HelpDialog } from '@/modules/help'
 import { LobbyScreen, WaitingScreen } from '@/modules/lobby'
-import { DEFAULT_PLAYER_NAME, playerNameOf, SettingsDialog, useSettings } from '@/modules/settings'
+import { cleanPlayerName, SettingsDialog, useSettings } from '@/modules/settings'
 
 const connection = useGameConnection()
 const router = useRouter()
 const settings = useSettings()
+// Пустое имя сервер заменит именем по умолчанию.
+const playerName = (): string => cleanPlayerName(settings.value.playerName)
 const settingsOpen = ref(false)
 const helpOpen = ref(false)
 
@@ -54,12 +56,12 @@ function cancelWaiting(): void {
   <LobbyScreen
     v-else
     v-model:name="settings.playerName"
-    :default-name="DEFAULT_PLAYER_NAME"
+    :default-name="DEFAULT_PLAYER_NAMES.join(' или ')"
     :connected="connected"
     :error="error"
-    @quick="connection.findMatch(playerNameOf(settings))"
-    @create="connection.createMatch(playerNameOf(settings))"
-    @join="connection.joinMatch($event, playerNameOf(settings))"
+    @quick="connection.findMatch(playerName())"
+    @create="connection.createMatch(playerName())"
+    @join="connection.joinMatch($event, playerName())"
     @catalog="router.push('/cards')"
     @settings="settingsOpen = true"
     @help="helpOpen = true"

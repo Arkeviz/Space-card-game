@@ -56,10 +56,10 @@ describe('имя игрока', () => {
     expect(parse({ type: CLIENT_MESSAGE.JOIN_MATCH, code: 'ABC123' })).toBeNull()
   })
 
-  it('пробелы по краям обрезаются, пустое и состоящее из пробелов имя отклоняется', () => {
+  it('пробелы по краям обрезаются, пустое и состоящее из пробелов имя означает «имя по умолчанию»', () => {
     expect(create('  Алиса  ')).toEqual({ type: CLIENT_MESSAGE.CREATE_MATCH, name: 'Алиса' })
-    expect(create('')).toBeNull()
-    expect(create('   ')).toBeNull()
+    expect(create('')).toEqual({ type: CLIENT_MESSAGE.CREATE_MATCH, name: '' })
+    expect(create('   ')).toEqual({ type: CLIENT_MESSAGE.CREATE_MATCH, name: '' })
   })
 
   it('длиннее предела отклоняется, ровно предел принимается', () => {

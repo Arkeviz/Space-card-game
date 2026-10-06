@@ -4,11 +4,11 @@
  * поэтому здесь собирается MatchTransport (IoC).
  */
 import type { MatchTransport } from '@/modules/match'
+import { DEFAULT_PLAYER_NAMES } from '@space/protocol'
 import { computed, onBeforeUnmount, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useGameConnection } from '@/modules/connection'
 import { MatchScreen } from '@/modules/match'
-import { DEFAULT_PLAYER_NAME } from '@/modules/settings'
 
 const connection = useGameConnection()
 const router = useRouter()
@@ -18,7 +18,8 @@ const ready = computed(() => connection.state.view !== null)
 const names = computed(() => {
   const { names, you } = connection.state
   const self = you ?? 0
-  return { self: names[self] || DEFAULT_PLAYER_NAME, opponent: names[self === 0 ? 1 : 0] || DEFAULT_PLAYER_NAME }
+  const opponent = self === 0 ? 1 : 0
+  return { self: names[self] || DEFAULT_PLAYER_NAMES[self], opponent: names[opponent] || DEFAULT_PLAYER_NAMES[opponent] }
 })
 // Реванш начинает новую партию с новым matchId: адрес страницы следует за ней.
 watch(() => connection.state.matchId, (matchId) => {

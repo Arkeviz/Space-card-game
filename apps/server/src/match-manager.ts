@@ -149,7 +149,7 @@ export class MatchManager {
   createMatch(socket: WebSocket, name: string): Binding {
     this.removeFromQueue(socket)
     const room = this.newRoom()
-    const token = claimSeat(room.seats[0], socket, name)
+    const token = claimSeat(room.seats[0], 0, socket, name)
     this.bind(socket, room, 0)
     this.scheduleCleanup(room, this.waitingTimeoutMs)
 
@@ -166,7 +166,7 @@ export class MatchManager {
       return { error: MATCH_ERROR.FULL }
 
     this.removeFromQueue(socket)
-    const token = claimSeat(room.seats[1], socket, name)
+    const token = claimSeat(room.seats[1], 1, socket, name)
     this.bind(socket, room, 1)
     send(socket, { type: SERVER_MESSAGE.JOINED, matchId: room.id, code: room.code, you: 1, token, opponentConnected: true })
     this.startRoom(room)
@@ -414,7 +414,7 @@ export class MatchManager {
     const room = this.newRoom()
     players.forEach((player, index) => {
       const seat = index as PlayerId
-      const token = claimSeat(room.seats[seat], player.socket, player.name)
+      const token = claimSeat(room.seats[seat], seat, player.socket, player.name)
       this.bind(player.socket, room, seat)
       send(player.socket, { type: SERVER_MESSAGE.JOINED, matchId: room.id, code: room.code, you: seat, token, opponentConnected: true })
     })

@@ -1,4 +1,4 @@
-export { CLIENT_MESSAGE, parseClientMessage, PLAYER_NAME_MAX_LENGTH } from './messages/client.ts'
+export { CLIENT_MESSAGE, DEFAULT_PLAYER_NAMES, parseClientMessage, PLAYER_NAME_MAX_LENGTH } from './messages/client.ts'
 export type { ClientMessage } from './messages/client.ts'
 export { CommandSchema, parseCommand } from './messages/command.ts'
 export { HEARTBEAT, isPing, PingSchema, PongSchema } from './messages/heartbeat.ts'

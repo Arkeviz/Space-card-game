@@ -11,11 +11,8 @@ export type AnimationMode = (typeof ANIMATION_MODE)[keyof typeof ANIMATION_MODE]
 /** Допустимые множители скорости анимаций: больше - быстрее. */
 export const ANIMATION_SPEEDS = [0.75, 1, 1.5, 2] as const
 
-/** Имя, под которым играет тот, кто своё не указал: сервер требует непустое. */
-export const DEFAULT_PLAYER_NAME = 'Игрок'
-
 export interface Settings {
-  /** Пустое имя заменяется на DEFAULT_PLAYER_NAME при отправке (см. playerNameOf). */
+  /** Пустое имя уходит на сервер как есть: он сам даёт имя по умолчанию (DEFAULT_PLAYER_NAMES в протоколе). */
   playerName: string
   animationSpeed: number
   animationMode: AnimationMode
@@ -41,11 +38,6 @@ const ANIMATION_MODES: readonly string[] = Object.values(ANIMATION_MODE)
 /** Очищает введённое имя: без управляющих символов, пробелы по краям обрезаются, длина не больше предела протокола. */
 export function cleanPlayerName(raw: string): string {
   return [...raw.replace(/\p{C}/gu, '').trim()].slice(0, PLAYER_NAME_MAX_LENGTH).join('').trim()
-}
-
-/** Имя для отправки на сервер: введённое игроком или имя по умолчанию. */
-export function playerNameOf(settings: Pick<Settings, 'playerName'>): string {
-  return cleanPlayerName(settings.playerName) || DEFAULT_PLAYER_NAME
 }
 
 /**
