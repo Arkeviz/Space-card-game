@@ -65,6 +65,12 @@ withDefaults(defineProps<{
   background: rgba(79, 216, 255, 0.1);
 }
 
+.game-button--outline:disabled {
+  background: rgba(143, 163, 200, 0.08);
+  color: var(--c-dim);
+  box-shadow: inset 0 0 0 1px rgba(143, 163, 200, 0.25);
+}
+
 .game-button--ghost {
   background: rgba(10, 16, 32, 0.6);
   color: var(--c-text-quiet);
