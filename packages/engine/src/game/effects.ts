@@ -330,23 +330,30 @@ export function isAutomatic(effects: readonly Effect[]): boolean {
 }
 
 /**
- * Срабатывание простых способностей союзника: у каждой карты игрока на столе, у которой условие союзника
- * выполнено, а способность ещё не использована. Вызывается, когда на столе появилась новая карта (розыгрыш,
- * копирование) и в начале хода игрока (для баз, оставшихся с прошлого хода). Простые эффекты prompt не открывают,
- * поэтому цепочка не прерывается.
+ * Срабатывание простых способностей у карт игрока на столе: основной способности баз и аванпостов и способности
+ * союзника (если условие выполнено), пока они ещё не использованы. Вызывается, когда на столе появилась новая карта
+ * (розыгрыш, копирование) и в начале хода игрока (для баз, оставшихся с прошлого хода). Простые эффекты prompt не
+ * открывают, поэтому цепочка не прерывается. Основные способности кораблей здесь не участвуют: они срабатывают
+ * в playCard.
  */
-export function triggerAllies(ctx: Ctx, player: PlayerId): void {
+export function triggerAutomatic(ctx: Ctx, player: PlayerId): void {
   const p = ctx.state.players[player]
   for (const played of p.inPlay) {
-    if (played.used[ABILITY_KIND.ALLY])
-      continue
-    const effects = effectiveCard(played).abilities[ABILITY_KIND.ALLY]
-    if (!effects || !isAutomatic(effects) || !hasAlly(p, played))
-      continue
-    played.used[ABILITY_KIND.ALLY] = true
-    ctx.events.push({ type: EVENT_TYPE.ABILITY_ACTIVATED, player, cardId: played.card.id, ability: ABILITY_KIND.ALLY })
-    resolveEffects(ctx, effects, played.card.id)
+    const abilities = effectiveCard(played).abilities
+    const basic = abilities[ABILITY_KIND.BASIC]
+    if (isBaseLike(played) && !played.used[ABILITY_KIND.BASIC] && basic && isAutomatic(basic))
+      fire(ctx, player, played, ABILITY_KIND.BASIC, basic)
+
+    const ally = abilities[ABILITY_KIND.ALLY]
+    if (!played.used[ABILITY_KIND.ALLY] && ally && isAutomatic(ally) && hasAlly(p, played))
+      fire(ctx, player, played, ABILITY_KIND.ALLY, ally)
   }
+}
+
+function fire(ctx: Ctx, player: PlayerId, played: PlayedCard, ability: typeof ABILITY_KIND.BASIC | typeof ABILITY_KIND.ALLY, effects: readonly Effect[]): void {
+  played.used[ability] = true
+  ctx.events.push({ type: EVENT_TYPE.ABILITY_ACTIVATED, player, cardId: played.card.id, ability })
+  resolveEffects(ctx, effects, played.card.id)
 }
 
 /** Начало хода: игрок, которому соперник велел сбросить карты, выбирает их. Если рука пуста, долг сгорает. */

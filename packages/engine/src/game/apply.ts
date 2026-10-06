@@ -24,7 +24,7 @@ import {
   scrapCandidates,
   scrapChosenCard,
   spend,
-  triggerAllies,
+  triggerAutomatic,
 } from './effects.ts'
 
 const PROMPT_COMMANDS = new Set<CommandType>([COMMAND_TYPE.CHOOSE_OPTION, COMMAND_TYPE.CHOOSE_CARD, COMMAND_TYPE.CHOOSE_CARDS, COMMAND_TYPE.SKIP])
@@ -54,7 +54,7 @@ function playCard(ctx: Ctx, player: PlayerId, cardId: string): CommandError | nu
   ctx.events.push({ type: EVENT_TYPE.CARD_PLAYED, player, card: instance })
 
   // Простые способности союзника срабатывают сразу: и у самой карты, и у тех, кому она стала союзником.
-  triggerAllies(ctx, player)
+  triggerAutomatic(ctx, player)
 
   const card = getCard(instance.cardId)
   if (card.kind === CARD_KIND.SHIP) {
@@ -232,7 +232,7 @@ function endTurn(ctx: Ctx, player: PlayerId): CommandError | null {
   ctx.events.push({ type: EVENT_TYPE.TURN_STARTED, player: next, turn: state.turn })
 
   // Базы с прошлых ходов уже имеют союзников: их простые способности срабатывают сразу, потом - обязательный сброс.
-  triggerAllies(ctx, next)
+  triggerAutomatic(ctx, next)
   openPendingDiscard(ctx, next)
   return null
 }
@@ -340,7 +340,7 @@ function answerPrompt(ctx: Ctx, player: PlayerId, command: Extract<Command, { pr
       if (copied === null)
         return COMMAND_ERROR.INVALID_CHOICE
       // Скопированная фракция может сделать корабль союзником (и наоборот).
-      triggerAllies(ctx, player)
+      triggerAutomatic(ctx, player)
       const rest = closePrompt(ctx)
       resolveEffects(ctx, [...copied, ...rest], prompt.source)
       return null

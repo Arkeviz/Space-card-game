@@ -324,8 +324,37 @@ describe('способности', () => {
     const result = run(state, 0, { type: COMMAND_TYPE.END_TURN })
     const types = result.events.map(event => event.type)
     expect(types.indexOf(EVENT_TYPE.ABILITY_ACTIVATED)).toBeGreaterThan(types.indexOf(EVENT_TYPE.TURN_STARTED))
-    expect(result.state.pools[RESOURCE.COMBAT]).toBe(4)
+    // По 2 атаки от основной способности и от способности союзника каждой из двух баз.
+    expect(result.state.pools[RESOURCE.COMBAT]).toBe(8)
     expect(result.state.players[1].inPlay.find(entry => entry.card.id === first.id)?.used[ABILITY_KIND.ALLY]).toBe(true)
+  })
+
+  it('основная способность базы без выбора срабатывает сама при выкладывании и недоступна вручную', () => {
+    const state = newGame()
+    const [wheel] = setHand(state, 0, ['blob-wheel'])
+    const result = run(state, 0, { type: COMMAND_TYPE.PLAY_CARD, cardId: wheel.id })
+    expect(result.events).toContainEqual({ type: EVENT_TYPE.ABILITY_ACTIVATED, player: 0, cardId: wheel.id, ability: ABILITY_KIND.BASIC })
+    expect(result.state.pools[RESOURCE.COMBAT]).toBe(1)
+    expect(errorOf(result.state, 0, { type: COMMAND_TYPE.ACTIVATE, cardId: wheel.id, ability: ABILITY_KIND.BASIC })).toBe(COMMAND_ERROR.ABILITY_USED)
+    expect(legalActions(result.state, 0).some(action => action.type === COMMAND_TYPE.ACTIVATE && action.ability === ABILITY_KIND.BASIC)).toBe(false)
+  })
+
+  it('основная способность базы с выбором или сбросом остаётся ручной', () => {
+    const state = newGame()
+    const [brain, trading] = setHand(state, 0, ['brain-world', 'trading-post'])
+    let result = run(state, 0, { type: COMMAND_TYPE.PLAY_CARD, cardId: brain.id })
+    result = run(result.state, 0, { type: COMMAND_TYPE.PLAY_CARD, cardId: trading.id })
+    expect(result.state.prompt).toBeNull()
+    expect(result.events.some(event => event.type === EVENT_TYPE.ABILITY_ACTIVATED && event.ability === ABILITY_KIND.BASIC)).toBe(false)
+    expect(legalActions(result.state, 0)).toContainEqual({ type: COMMAND_TYPE.ACTIVATE, cardId: brain.id, ability: ABILITY_KIND.BASIC })
+    expect(legalActions(result.state, 0)).toContainEqual({ type: COMMAND_TYPE.ACTIVATE, cardId: trading.id, ability: ABILITY_KIND.BASIC })
+  })
+
+  it('основная способность базы с прошлых ходов срабатывает в начале хода', () => {
+    const state = newGame()
+    setInPlay(state, 1, ['blob-wheel'])
+    const result = run(state, 0, { type: COMMAND_TYPE.END_TURN })
+    expect(result.state.pools[RESOURCE.COMBAT]).toBe(1)
   })
 
   it('необязательная утилизация из руки/сброса: можно выбрать карту или пропустить', () => {
@@ -444,8 +473,8 @@ describe('конец хода', () => {
     const state = newGame()
     const [base] = setInPlay(state, 0, ['blob-wheel'])
     const [scout, viper] = setHand(state, 0, ['scout', 'viper'])
+    // База уже на столе и ещё не использована: розыгрыш любой карты запускает её простую способность.
     let result = run(state, 0, { type: COMMAND_TYPE.PLAY_CARD, cardId: scout.id })
-    result = run(result.state, 0, { type: COMMAND_TYPE.ACTIVATE, cardId: base.id, ability: ABILITY_KIND.BASIC })
     expect(result.state.pools[RESOURCE.COMBAT]).toBe(1)
 
     result = run(result.state, 0, { type: COMMAND_TYPE.END_TURN })
@@ -458,9 +487,10 @@ describe('конец хода', () => {
     expect(result.state.pools).toEqual(emptyPools())
     expect(result.events.at(-1)).toEqual({ type: EVENT_TYPE.TURN_STARTED, player: 1, turn: 2 })
 
-    // способности базы обновляются в начале следующего хода её владельца
+    // способности базы обновляются в начале следующего хода её владельца, простая основная срабатывает снова
     result = run(result.state, 1, { type: COMMAND_TYPE.END_TURN })
-    expect(result.state.players[0].inPlay[0]!.used).toEqual(freshUsage())
+    expect(result.state.players[0].inPlay[0]!.used).toEqual({ ...freshUsage(), [ABILITY_KIND.BASIC]: true })
+    expect(result.state.pools[RESOURCE.COMBAT]).toBe(1)
     expect(result.state.turn).toBe(3)
   })
 
