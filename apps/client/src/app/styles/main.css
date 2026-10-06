@@ -54,6 +54,49 @@ button {
   font: inherit;
 }
 
+/*
+ * Полосы прокрутки в стиле интерфейса: узкая, скруглённая, с голубым ползунком. Chromium и Safari рисуют их через
+ * ::-webkit-scrollbar (когда задан scrollbar-color, Chrome эти правила игнорирует, поэтому стандартные свойства
+ * отданы только браузерам без -webkit-полос, то есть Firefox).
+ */
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: rgba(143, 163, 200, 0.06);
+  border-radius: 5px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: rgba(79, 216, 255, 0.35);
+  border: 2px solid transparent;
+  border-radius: 5px;
+  background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(79, 216, 255, 0.65);
+  background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-thumb:active {
+  background: var(--c-me);
+  background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(79, 216, 255, 0.45) rgba(143, 163, 200, 0.06);
+  }
+}
+
 :focus-visible {
   outline: 2px solid var(--c-me);
   outline-offset: 2px;
