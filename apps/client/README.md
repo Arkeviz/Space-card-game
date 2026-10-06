@@ -91,6 +91,19 @@ wsUrl передаётся параметром (`createGameConnection(wsUrl)`),
 
 Архитектура экрана (слой карт, очередь событий, `TableState`, интерфейс `MatchTransport`) описана в [AGENTS.md](../../AGENTS.md), раздел «Клиент: экран матча». Геометрия сцены (позиции зон и карт) лежит в `src/modules/match/lib/rects.ts` и `src/modules/match/modules/board/lib/layout.ts`: числа перенесены из дизайна, при правке сетки менять их там, а не в разметке.
 
+## Версия приложения
+
+Версионируется только клиент (сайт): версия лежит в `version` файла `apps/client/package.json` (семантическое версионирование),
+других мест её менять не нужно. Vite подставляет её при сборке как глобальную константу `__APP_VERSION__` (`define` в `vite.config.ts`,
+тип - в `src/global/env.d.ts`), а `common/ui/AppVersion.vue` показывает `vX.Y.Z` в правом нижнем углу окна на главном экране и на экране матча
+(подключён в `app/layouts/default.vue`). Поднять версию без тега и коммита от npm:
+
+```bash
+pnpm --filter @space/client exec npm version patch --no-git-tag-version   # или minor / major
+```
+
+Версия читается при запуске Vite: после смены номера dev-сервер нужно перезапустить. Серверные пакеты и релизы на GitHub пока не версионируются.
+
 ## Команды
 
 ```bash
