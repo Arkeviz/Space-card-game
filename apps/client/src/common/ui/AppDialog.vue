@@ -5,11 +5,11 @@
  * и окно должно масштабироваться вместе с ней.
  */
 import { onClickOutside, onKeyStroke } from '@vueuse/core'
-import { inject, onBeforeUnmount, onMounted, provide, useId, useTemplateRef } from 'vue'
+import { onBeforeUnmount, onMounted, provide, useId, useTemplateRef } from 'vue'
+import { useStageDim } from '../composables/useStageDim'
 import AppIcon from './AppIcon.vue'
 import { DIALOG_LAYER_KEY } from './dialog-layer'
 import { ICON } from './icons'
-import { STAGE_DIM_KEY } from './stage-dim'
 
 const props = withDefaults(defineProps<{
   title?: string
@@ -43,13 +43,8 @@ const panel = useTemplateRef<HTMLElement>('panel')
 provide(DIALOG_LAYER_KEY, useTemplateRef<HTMLElement>('overlay'))
 let previousFocus: HTMLElement | null = null
 
-// Окно затемняет сцену, а поля вокруг неё затемняет StageScaler: просим его об этом на время жизни окна.
-const stageDim = inject(STAGE_DIM_KEY, null)
-let releaseDim: (() => void) | undefined
-onMounted(() => {
-  releaseDim = stageDim?.acquire()
-})
-onBeforeUnmount(() => releaseDim?.())
+// Окно затемняет сцену, а поля вокруг неё затемняет StageScaler.
+useStageDim()
 
 onClickOutside(panel, () => {
   if (props.closeOnClickOverlay ?? props.closable)

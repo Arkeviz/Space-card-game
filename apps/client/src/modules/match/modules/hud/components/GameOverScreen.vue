@@ -2,8 +2,10 @@
 import type { EndReason } from '@space/protocol'
 import type { RematchStatus } from '../lib/game-over'
 import { computed, onMounted, useTemplateRef } from 'vue'
+import { useStageDim } from '@/common/composables/useStageDim'
 import GameButton from '@/common/ui/GameButton.vue'
 import { circlePath } from '@/common/ui/icons'
+import { STAGE_DIM } from '@/common/ui/stage-dim'
 import { rematchView, resultReason } from '../lib/game-over'
 
 const props = defineProps<{
@@ -21,6 +23,9 @@ defineEmits<{
   viewField: []
   rematch: []
 }>()
+
+// Экран итогов затемняет сцену, а поля вокруг неё затемняет StageScaler.
+useStageDim(STAGE_DIM.RESULT)
 
 const title = computed(() => (props.win ? 'ПОБЕДА' : 'ПОРАЖЕНИЕ'))
 const reasonText = computed(() => resultReason(props.win, props.reason))
