@@ -11,3 +11,7 @@ shellEmulator: true
 packages:
   - apps/*
   - packages/*
+
+# Скрипты установки не запускаем: esbuild (нужен drizzle-kit) берёт готовый бинарник из пакета своей платформы.
+allowBuilds:
+  esbuild: false

@@ -4,8 +4,9 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "dev": "node --watch src/main.ts",
-    "start": "node src/main.ts",
+    "dev": "node --env-file-if-exists=.env --watch src/main.ts",
+    "start": "node --env-file-if-exists=.env src/main.ts",
+    "db:generate": "drizzle-kit generate",
     "test": "vitest run --passWithNoTests",
     "typecheck": "node ../../node_modules/typescript-7/bin/tsc -p tsconfig.json"
   },
@@ -13,9 +14,13 @@
     "@fastify/websocket": "^11.3.1",
     "@space/engine": "workspace:*",
     "@space/protocol": "workspace:*",
-    "fastify": "^5.12.5"
+    "drizzle-orm": "^0.45.3",
+    "fastify": "^5.12.5",
+    "pg": "^8.23.1"
   },
   "devDependencies": {
-    "@types/ws": "^8.18.0"
+    "@types/pg": "^8.23.1",
+    "@types/ws": "^8.18.0",
+    "drizzle-kit": "^0.31.11"
   }
 }

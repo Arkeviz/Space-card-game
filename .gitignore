@@ -36,6 +36,7 @@ coverage
 *.tgz
 
 # Environment
+.env
 .env.*.local
 components.d.ts
 

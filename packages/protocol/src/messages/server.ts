@@ -16,9 +16,26 @@ export const SERVER_MESSAGE = {
   REJECT: 'reject',
   /** Соперник отключился или вернулся: нужен для индикатора связи и отсчёта до автоматической сдачи. */
   OPPONENT_STATUS: 'opponent-status',
+  /** Игрок встал в очередь быстрого поиска или вышел из неё. */
+  SEARCH_STATUS: 'search-status',
+  /** Кто из игроков хочет реванш и возможен ли он вообще. */
+  REMATCH_STATUS: 'rematch-status',
   /** Ошибка уровня матча (не связанная с конкретной командой): неверный код, матч заполнен и т. п. */
   ERROR: 'error',
 } as const
+
+/** Чем закончилась партия. */
+export const END_REASON = {
+  /** Авторитет проигравшего обнулён. */
+  AUTHORITY: 'authority',
+  /** Игрок сдался сам. */
+  CONCEDE: 'concede',
+  /** Игрок отключился и не вернулся за отведённое время. */
+  DISCONNECT: 'disconnect',
+  /** Игрок несколько ходов подряд ничего не делал: ему засчитана сдача. */
+  IDLE: 'idle',
+} as const
+export type EndReason = (typeof END_REASON)[keyof typeof END_REASON]
 
 export const MATCH_ERROR = {
   NOT_FOUND: 'not-found',
@@ -51,6 +68,10 @@ export interface UpdateMessage {
   legalActions: Command[]
   /** Сколько мс осталось до автодействия сервера (таймаут бездействия обновляется после каждой команды); null, если партия окончена. */
   turnTimeLeftMs: number | null
+  /** Имена игроков по номеру места (PlayerId). */
+  names: [string, string]
+  /** Почему партия закончилась; null, пока она идёт. */
+  endReason: EndReason | null
 }
 
 export interface AckMessage {
@@ -71,9 +92,32 @@ export interface OpponentStatusMessage {
   reconnectTimeLeftMs: number | null
 }
 
+export interface SearchStatusMessage {
+  type: typeof SERVER_MESSAGE.SEARCH_STATUS
+  searching: boolean
+}
+
+export interface RematchStatusMessage {
+  type: typeof SERVER_MESSAGE.REMATCH_STATUS
+  /** Вы предложили реванш. */
+  you: boolean
+  /** Соперник предложил реванш. */
+  opponent: boolean
+  /** Реванш ещё возможен: соперник на месте (не ушёл из матча и не отключился). */
+  available: boolean
+}
+
 export interface ErrorMessage {
   type: typeof SERVER_MESSAGE.ERROR
   reason: MatchError
 }
 
-export type ServerMessage = AckMessage | ErrorMessage | JoinedMessage | OpponentStatusMessage | RejectMessage | UpdateMessage
+export type ServerMessage
+  = | AckMessage
+    | ErrorMessage
+    | JoinedMessage
+    | OpponentStatusMessage
+    | RejectMessage
+    | RematchStatusMessage
+    | SearchStatusMessage
+    | UpdateMessage
