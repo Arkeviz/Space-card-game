@@ -112,13 +112,13 @@ function confirm(): void {
 
 .menu__popover {
   position: absolute;
-  top: 48px;
+  bottom: 48px;
   right: 0;
   z-index: 400;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  width: 320px;
+  width: 260px;
   padding: 12px;
   background: var(--c-surface);
   box-shadow: inset 0 0 0 1px rgba(79, 216, 255, 0.4), 0 20px 50px rgba(0, 0, 0, 0.6);

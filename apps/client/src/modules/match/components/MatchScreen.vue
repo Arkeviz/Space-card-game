@@ -12,6 +12,7 @@ import { COMMAND_TYPE, PROMPT_KIND } from '@space/engine'
 import { useEventListener, useMediaQuery } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
+import SpaceBackdrop from '@/common/ui/SpaceBackdrop.vue'
 import StageScaler from '@/common/ui/StageScaler.vue'
 import { HelpDialog } from '@/modules/help'
 import { motionFactor, SettingsDialog, useSettings } from '@/modules/settings'
@@ -181,9 +182,11 @@ watch(pending, () => {
 
 <template>
   <StageScaler v-if="table">
-    <div class="match space-backdrop">
-      <div class="match__stars" aria-hidden="true" />
-
+    <template #backdrop>
+      <!-- 30 кадров: шейдер почти неподвижен, а кадры нужны анимациям карт. -->
+      <SpaceBackdrop :frame-rate="30" />
+    </template>
+    <div class="match">
       <HudLayer
         :table="table"
         :legal="legalIndex"
@@ -199,12 +202,14 @@ watch(pending, () => {
         :opponent-online="opponentOnline"
         :opponent-return-deadline="opponentReturnDeadline"
         :play-all-count="store.playingAll ? 0 : store.playableCount"
+        :finished="gameOver !== null"
         @attack="attackPlayer"
         @end-turn="requestEndTurn"
         @play-all="store.playAll()"
         @concede="run({ type: COMMAND_TYPE.CONCEDE })"
         @settings="settingsOpen = true"
         @help="helpOpen = true"
+        @leave="emit('leave')"
       />
 
       <Board
@@ -270,23 +275,6 @@ watch(pending, () => {
   inset: 0;
   overflow: clip;
   font-family: var(--font-text);
-}
-
-.match__stars {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background-image:
-    radial-gradient(1.4px 1.4px at 7% 12%, rgba(230, 238, 255, 0.7), rgba(230, 238, 255, 0) 100%),
-    radial-gradient(1px 1px at 18% 64%, rgba(230, 238, 255, 0.5), rgba(230, 238, 255, 0) 100%),
-    radial-gradient(1.2px 1.2px at 31% 22%, rgba(230, 238, 255, 0.55), rgba(230, 238, 255, 0) 100%),
-    radial-gradient(1px 1px at 44% 88%, rgba(230, 238, 255, 0.45), rgba(230, 238, 255, 0) 100%),
-    radial-gradient(1.4px 1.4px at 57% 9%, rgba(230, 238, 255, 0.6), rgba(230, 238, 255, 0) 100%),
-    radial-gradient(1px 1px at 66% 47%, rgba(230, 238, 255, 0.4), rgba(230, 238, 255, 0) 100%),
-    radial-gradient(1.2px 1.2px at 78% 73%, rgba(230, 238, 255, 0.55), rgba(230, 238, 255, 0) 100%),
-    radial-gradient(1px 1px at 86% 18%, rgba(230, 238, 255, 0.5), rgba(230, 238, 255, 0) 100%),
-    radial-gradient(1.4px 1.4px at 93% 58%, rgba(230, 238, 255, 0.6), rgba(230, 238, 255, 0) 100%),
-    radial-gradient(1px 1px at 12% 92%, rgba(230, 238, 255, 0.4), rgba(230, 238, 255, 0) 100%);
 }
 
 .match__result {
