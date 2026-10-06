@@ -1,5 +1,6 @@
 import type { CardInstance, GameState, PlayerId, PlayerState } from '../types/index.ts'
 import {
+  EXPLORER_CARD_ID,
   EXPLORER_COUNT,
   FIRST_PLAYER_STARTING_HAND,
   HAND_SIZE,
@@ -36,7 +37,7 @@ export function createGame(seed: number, options: CreateGameOptions = {}): GameS
   })
 
   const players: [PlayerState, PlayerState] = [makePlayer(), makePlayer()]
-  const explorers = Array.from({ length: EXPLORER_COUNT }, () => make('explorer'))
+  const explorers = Array.from({ length: EXPLORER_COUNT }, () => make(EXPLORER_CARD_ID))
   const tradeDeck = rng.shuffle(makeMany(TRADE_DECK_COMPOSITION))
   const tradeRow = tradeDeck.splice(0, TRADE_ROW_SIZE)
 

@@ -23,6 +23,7 @@ import {
   resolveEffects,
   scrapCandidates,
   scrapChosenCard,
+  sendToScrap,
   spend,
   triggerAutomatic,
 } from './effects.ts'
@@ -143,7 +144,7 @@ function activate(ctx: Ctx, player: PlayerId, cardId: string, ability: AbilityKi
   }
   else {
     p.inPlay = p.inPlay.filter(entry => entry !== played)
-    ctx.state.scrapHeap.push(played.card)
+    sendToScrap(ctx.state, played.card)
     ctx.events.push({ type: EVENT_TYPE.CARD_SCRAPPED, player, card: played.card, from: 'play' })
   }
 

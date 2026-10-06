@@ -1,6 +1,6 @@
 import type { CardInstance, GameEvent, PlayerId, ScrapZone } from '@space/engine'
 import type { Side, TableSide, TableState } from './types'
-import { ABILITY_KIND, CARD_KIND, DESTINATION, EVENT_TYPE, getCard, RESOURCE, SCRAP_ZONE } from '@space/engine'
+import { ABILITY_KIND, CARD_KIND, DESTINATION, EVENT_TYPE, EXPLORER_CARD_ID, getCard, RESOURCE, SCRAP_ZONE } from '@space/engine'
 import { SIDE } from './types'
 
 function clone<T>(value: T): T {
@@ -180,7 +180,11 @@ export function reduceEvent(table: TableState, event: GameEvent): TableState {
 
     case EVENT_TYPE.CARD_SCRAPPED:
       removeFromScrapSource(next, event.player, event.card, event.from)
-      next.scrapHeap.push(event.card)
+      // Исследователь возвращается в свою стопку, как у движка (sendToScrap).
+      if (event.card.cardId === EXPLORER_CARD_ID)
+        next.explorersCount += 1
+      else
+        next.scrapHeap.push(event.card)
       break
 
     case EVENT_TYPE.PROMPT_OPENED:

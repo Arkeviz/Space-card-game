@@ -1,7 +1,7 @@
 import type { GameEvent, PlayerId } from '@space/engine'
 import type { TableState } from '../../table'
 import type { Pose } from './layout'
-import { DESTINATION, EVENT_TYPE } from '@space/engine'
+import { DESTINATION, EVENT_TYPE, EXPLORER_CARD_ID } from '@space/engine'
 import { SIDE, sideOf } from '../../table'
 import {
   explorersPose,
@@ -92,7 +92,10 @@ export function motionFor(events: readonly GameEvent[], before: TableState): Mot
 
       case EVENT_TYPE.CARD_SCRAPPED: {
         const mine = sideOf(before, event.player) === SIDE.SELF
-        if (!mine && event.from === 'hand')
+        // Исследователь не распадается: он летит обратно в свою стопку.
+        if (event.card.cardId === EXPLORER_CARD_ID)
+          motion.exit.set(event.card.id, { ...explorersPose(layoutOf(before).trade), opacity: 0 })
+        else if (!mine && event.from === 'hand')
           motion.spawn.set(event.card.id, { from: opponentHandOrigin(), faceDown: true })
         // Карта из глубины сброса на столе не нарисована: она «достаётся» из стопки и распадается на месте.
         else if (event.from === 'discard')

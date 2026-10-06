@@ -1,6 +1,7 @@
 import type { Rng } from '../lib/rng.ts'
 import type { AbilityUsage, Card, CardInstance, Effect, Faction, GameEvent, GameState, PassiveType, PlayedCard, PlayerId, PlayerState, Pools, PromptSpec, Resource, ScrapZone, SpendableResource } from '../types/index.ts'
 import { getCard } from '../data/cards.ts'
+import { EXPLORER_CARD_ID } from '../data/config.ts'
 import { ABILITY_KIND, CARD_KIND, EFFECT_TYPE, EVENT_TYPE, FACTION, PASSIVE_TYPE, PROMPT_KIND, RESOURCE, SCRAP_ZONE } from '../types/index.ts'
 
 /** Изменяемый контекст выполнения одной команды: apply работает над клоном состояния. */
@@ -22,6 +23,14 @@ export function other(player: PlayerId): PlayerId {
 export function removeById(list: CardInstance[], id: string): CardInstance | undefined {
   const index = list.findIndex(card => card.id === id)
   return index === -1 ? undefined : list.splice(index, 1)[0]
+}
+
+/** Убирает карту из игры: Исследователь возвращается в свою стопку (вниз), остальные карты уходят в утиль. */
+export function sendToScrap(state: GameState, card: CardInstance): void {
+  if (card.cardId === EXPLORER_CARD_ID)
+    state.explorers.push(card)
+  else
+    state.scrapHeap.push(card)
 }
 
 export function gain(ctx: Ctx, player: PlayerId, resource: Resource, amount: number): void {
@@ -109,7 +118,7 @@ export function scrapChosenCard(ctx: Ctx, actor: PlayerId, cardId: string, zones
     state.tradeRow[slot] = null
   }
 
-  state.scrapHeap.push(candidate.card)
+  sendToScrap(state, candidate.card)
   ctx.events.push({ type: EVENT_TYPE.CARD_SCRAPPED, player: actor, card: candidate.card, from: candidate.zone })
   if (slot !== -1)
     refillTradeRow(ctx, slot)

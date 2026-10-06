@@ -1,5 +1,6 @@
 export { CARDS, getCard } from './data/cards.ts'
 export {
+  EXPLORER_CARD_ID,
   EXPLORER_COUNT,
   HAND_SIZE,
   STARTING_AUTHORITY,

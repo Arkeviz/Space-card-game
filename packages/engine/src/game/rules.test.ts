@@ -377,6 +377,20 @@ describe('способности', () => {
     expect(skipped.state.scrapHeap).toHaveLength(0)
   })
 
+  it('утилизированный Исследователь возвращается в стопку, а не в утиль', () => {
+    const state = newGame()
+    const [bot] = setHand(state, 0, ['trade-bot'])
+    const explorer = inst('explorer')
+    state.players[0].discard = [explorer]
+
+    const played = run(state, 0, { type: COMMAND_TYPE.PLAY_CARD, cardId: bot.id })
+    const scrapped = run(played.state, 0, { type: COMMAND_TYPE.CHOOSE_CARD, promptId: played.state.prompt!.id, cardId: explorer.id })
+    expect(scrapped.state.scrapHeap).toHaveLength(0)
+    expect(scrapped.state.explorers).toHaveLength(EXPLORER_COUNT + 1)
+    expect(scrapped.state.explorers.at(-1)).toEqual(explorer)
+    expect(scrapped.events.map(event => event.type)).toContain(EVENT_TYPE.CARD_SCRAPPED)
+  })
+
   it('утилизация без кандидатов не открывает prompt', () => {
     const state = newGame()
     const [bot] = setHand(state, 0, ['trade-bot'])

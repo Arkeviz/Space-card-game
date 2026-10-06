@@ -1,4 +1,6 @@
-export const EXPLORER_COUNT = 10
+/** Карта Исследователя: лежит отдельной стопкой, а утилизированный Исследователь возвращается в неё, а не в утиль. */
+export const EXPLORER_CARD_ID = 'explorer'
+export const EXPLORER_COUNT = 20
 export const TRADE_ROW_SIZE = 5
 export const STARTING_AUTHORITY = 50
 export const HAND_SIZE = 5
