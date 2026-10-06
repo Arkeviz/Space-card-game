@@ -85,11 +85,14 @@ onKeyStroke('Tab', (event) => {
 })
 
 // Фокус - в окно (на первую кнопку тела, а не на крестик), после закрытия - обратно туда, откуда открыли.
+// Пока идёт это начальное перемещение, окно помечено data-opening: миниатюры карт по такому фокусу не показывают увеличение.
 onMounted(() => {
   previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
   const target = panel.value?.querySelector<HTMLElement>('.dialog__body :is(button:not(:disabled), [tabindex="0"]), .dialog__footer button:not(:disabled)')
     ?? panel.value?.querySelector<HTMLElement>('button')
+  panel.value?.setAttribute('data-opening', '')
   target?.focus()
+  panel.value?.removeAttribute('data-opening')
 })
 onBeforeUnmount(() => previousFocus?.focus())
 </script>

@@ -23,7 +23,7 @@ const props = withDefaults(defineProps<{
 })
 
 /** Во сколько раз увеличенная копия больше натурального размера карты. */
-const ZOOM_SCALE = 1.25
+const ZOOM_SCALE = 1.5
 const GAP = 14
 const MARGIN = 8
 
@@ -67,15 +67,21 @@ function hide(): void {
   zoomAt.value = null
 }
 
+/** Фокус с клавиатуры показывает увеличение, а начальный фокус при открытии окна (data-opening у AppDialog) - нет. */
+function onFocus(): void {
+  if (!box.value?.closest('[data-opening]'))
+    show()
+}
+
 // Миниатюра обычно лежит внутри кнопки или фокусируемой ячейки: увеличение показывается и когда фокус пришёл на неё с клавиатуры.
 let trigger: HTMLElement | null = null
 onMounted(() => {
   trigger = box.value?.closest<HTMLElement>('button, [tabindex]') ?? null
-  trigger?.addEventListener('focus', show)
+  trigger?.addEventListener('focus', onFocus)
   trigger?.addEventListener('blur', hide)
 })
 onBeforeUnmount(() => {
-  trigger?.removeEventListener('focus', show)
+  trigger?.removeEventListener('focus', onFocus)
   trigger?.removeEventListener('blur', hide)
 })
 </script>
@@ -87,7 +93,7 @@ onBeforeUnmount(() => {
     :style="boxStyle"
     @pointerenter="show"
     @pointerleave="hide"
-    @focusin="show"
+    @focusin="onFocus"
     @focusout="hide"
   >
     <div class="thumb__inner" :style="innerStyle">
