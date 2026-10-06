@@ -13,6 +13,7 @@
     "test": "pnpm -r test",
     "dev:server": "pnpm --filter @space/server dev",
     "dev:client": "pnpm --filter @space/client dev",
+    "dev:stop": "node scripts/stop-dev.js",
     "db:up": "docker compose up -d --wait db",
     "db:generate": "pnpm --filter @space/server db:generate",
     "docker:up": "docker compose up --build"

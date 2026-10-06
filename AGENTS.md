@@ -25,6 +25,7 @@ pnpm typecheck                            # tsc/vue-tsc в каждом паке
 pnpm test                                 # vitest run в каждом пакете (pnpm -r test)
 pnpm dev:server                           # apps/server dev (node --watch)
 pnpm dev:client                           # apps/client dev (vite)
+pnpm dev:stop                             # остановить dev-серверы: порты 3001 и 5173 (или свои: pnpm dev:stop 3002), node --watch и pnpm-родителей
 pnpm db:up                                # только PostgreSQL в Docker (localhost:5432), для разработки с сохранением партий
 pnpm db:generate                          # новая SQL-миграция по схеме Drizzle (apps/server/drizzle)
 pnpm docker:up                            # весь стек в Docker (db + server + client), http://localhost:8181
