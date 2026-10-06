@@ -15,7 +15,9 @@ import {
   passiveLabels,
   TOKEN_KIND,
 } from '../lib/card-meta'
-import { CARD_FORM, CARD_SIZE, CARD_STATE, frameColor, glowFilter, SHOW_STAT_ICONS } from '../lib/card-visual'
+import { CARD_FORM, CARD_SIZE, CARD_STATE, frameColor, glowFilter } from '../lib/card-visual'
+import EffectChip from './EffectChip.vue'
+import EffectText from './EffectText.vue'
 
 /*
  * Внешний вид карты в натуральном размере (200x280 для карточки и рубашки, 280x200 для развёрнутой базы).
@@ -83,6 +85,12 @@ const viewRows = computed(() => rows.value.map((row, index) => {
   }
 }))
 
+/** Значок в заглушке картинки; у баз и аванпостов он на 20% крупнее, чем у кораблей. */
+const artGlyphSize = computed(() => {
+  const ship = isDeployed.value ? 26 : 38
+  return card.value?.kind === CARD_KIND.SHIP ? ship : Math.round(ship * 1.2)
+})
+
 const kindLabel = computed(() => (card.value ? KIND_LABEL[card.value.kind] : ''))
 </script>
 
@@ -129,9 +137,9 @@ const kindLabel = computed(() => (card.value ? KIND_LABEL[card.value.kind] : '')
       </div>
 
       <div class="card__art">
-        <AppIcon :name="card.kind === CARD_KIND.SHIP ? ICON.SHIP : ICON.STATION" :size="isDeployed ? 26 : 38" :stroke="1.2" class="card__art-glyph" />
-        <p class="card__art-caption">
-          {{ copyOf ? `КОПИЯ · ${cardName(copyOf)}` : 'ИЗОБРАЖЕНИЕ' }}
+        <AppIcon :name="card.kind === CARD_KIND.SHIP ? ICON.SHIP : ICON.BASE" :size="artGlyphSize" :stroke="1.2" class="card__art-glyph" />
+        <p v-if="copyOf" class="card__art-caption">
+          {{ `КОПИЯ · ${cardName(copyOf)}` }}
         </p>
       </div>
 
@@ -149,33 +157,27 @@ const kindLabel = computed(() => (card.value ? KIND_LABEL[card.value.kind] : '')
                 class="card__prefix"
                 :class="{ 'card__prefix--faction': row.prefixIsFaction }"
               >
-                <AppIcon :path="row.prefixIsFaction ? faction.emblem : undefined" :name="row.prefixIsFaction ? undefined : ICON.SCRAP" :size="15" />
+                <AppIcon :path="row.prefixIsFaction ? faction.emblem : undefined" :name="row.prefixIsFaction ? undefined : ICON.SCRAP" :size="17" :stroke="1.9" />
               </span>
               <template v-for="(token, index) in row.chips" :key="index">
-                <span
+                <EffectChip
                   v-if="token.kind === TOKEN_KIND.CHIP"
-                  class="card__chip"
-                  :style="{ '--chip': token.color, '--chip-rgb': token.rgb }"
-                >
-                  <AppIcon v-if="SHOW_STAT_ICONS" :name="token.icon" :size="15" />
-                  <span class="card__chip-value">{{ token.value }}</span>
-                </span>
+                  :icon="token.icon"
+                  :color="token.color"
+                  :rgb="token.rgb"
+                  :value="token.value"
+
+                  :label="token.label"
+                  :iconless="token.iconless"
+                />
                 <span v-else-if="token.kind === TOKEN_KIND.OR" class="card__or">ИЛИ</span>
               </template>
               <template v-if="row.chips.length === 0">
-                <span v-for="(token, index) in row.texts" :key="index" class="card__text">
-                  <AppIcon v-if="token.kind === TOKEN_KIND.TEXT" :name="token.icon" :size="13" class="card__text-icon" />
-                  <template v-if="token.kind === TOKEN_KIND.TEXT">{{ token.label }}</template>
-                </span>
+                <EffectText v-for="(token, index) in row.texts" :key="index" :token="token" class="card__text" />
               </template>
             </div>
             <template v-if="row.chips.length > 0">
-              <div v-for="(token, index) in row.texts" :key="index" class="card__text card__text--below">
-                <AppIcon v-if="token.kind === TOKEN_KIND.TEXT" :name="token.icon" :size="13" class="card__text-icon" />
-                <template v-if="token.kind === TOKEN_KIND.TEXT">
-                  {{ token.label }}
-                </template>
-              </div>
+              <EffectText v-for="(token, index) in row.texts" :key="index" :token="token" class="card__text card__text--below" />
             </template>
           </div>
           <AppIcon v-if="row.status === ABILITY_STATUS.USED" :name="ICON.CHECK" :size="13" :stroke="2.6" label="Использовано" class="card__row-mark card__row-mark--used" />
@@ -460,8 +462,8 @@ const kindLabel = computed(() => (card.value ? KIND_LABEL[card.value.kind] : '')
   flex: none;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   background: rgba(201, 214, 240, 0.08);
   color: var(--c-text-quiet);
   box-shadow: inset 0 0 0 1px rgba(201, 214, 240, 0.3);
@@ -471,22 +473,6 @@ const kindLabel = computed(() => (card.value ? KIND_LABEL[card.value.kind] : '')
   background: rgba(var(--f-rgb), 0.16);
   color: var(--f);
   box-shadow: inset 0 0 0 1px rgba(var(--f-rgb), 0.55);
-}
-
-.card__chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  height: 24px;
-  padding: 0 7px 0 5px;
-  background: rgba(var(--chip-rgb), 0.14);
-  color: var(--chip);
-  box-shadow: inset 0 0 0 1px rgba(var(--chip-rgb), 0.6);
-}
-
-.card__chip-value {
-  color: var(--c-text-strong);
-  font: 700 13px/1 var(--font-display);
 }
 
 .card__or {
@@ -507,12 +493,6 @@ const kindLabel = computed(() => (card.value ? KIND_LABEL[card.value.kind] : '')
   width: 100%;
   text-align: center;
   text-wrap: balance;
-}
-
-.card__text-icon {
-  display: inline-block;
-  margin-right: 4px;
-  vertical-align: -2px;
 }
 
 .card__row-mark {

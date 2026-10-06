@@ -75,6 +75,7 @@ const scrapLabel = computed(() => (props.node.cardId ? `Утилизироват
       :class="{ 'node__hit--liftable': node.liftable }"
       :aria-label="node.label"
       :aria-pressed="pressed"
+      data-tip-scope
       :tabindex="node.tabbable ? 0 : -1"
       @click="emit('click', node)"
       @keydown="onKeydown"
@@ -88,6 +89,7 @@ const scrapLabel = computed(() => (props.node.cardId ? `Утилизироват
       class="node__hit node__hit--inert"
       role="img"
       :aria-label="node.label"
+      data-tip-scope
       @pointerenter="emit('highlight', node.key)"
       @pointerleave="emit('highlight', null)"
     />
@@ -98,7 +100,7 @@ const scrapLabel = computed(() => (props.node.cardId ? `Утилизироват
       class="node__scrap"
       :tabindex="node.tabbable ? 0 : -1"
       :aria-label="scrapLabel"
-      :title="scrapLabel"
+      :data-tip="scrapLabel"
       @click="emit('scrap', node)"
     >
       <AppIcon :name="ICON.SCRAP" :size="18" />

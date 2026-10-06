@@ -70,7 +70,7 @@ onKeyStroke(['1', '2', '3', '4', '5', '6', '7', '8', '9'], (event) => {
           <template v-for="(chip, chipIndex) in item.chips" :key="chipIndex">
             <span v-if="chip.kind === TOKEN_KIND.CHIP" class="option__chip" :style="{ color: chip.color }">
               <AppIcon :name="chip.icon" :size="28" :stroke="2" />
-              <span class="option__value">{{ chip.value }}</span>
+              <span v-if="chip.value !== undefined" class="option__value">{{ chip.value }}</span>
             </span>
           </template>
           <span class="option__name">{{ item.text }}</span>

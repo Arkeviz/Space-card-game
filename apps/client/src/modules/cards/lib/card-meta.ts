@@ -120,22 +120,45 @@ export const ABILITY_STATUS = {
 } as const
 export type AbilityStatus = ValueOf<typeof ABILITY_STATUS>
 
-/** Токен описания эффекта: чип «иконка + число», слово «ИЛИ» или текстовая строка с иконкой. */
+/**
+ * Токен описания эффекта: чип «иконка + число» (число может отсутствовать), слово «ИЛИ», текстовая строка
+ * (иконка необязательна) или строка из слов и иконок («+2 [карта] если от 2 [база]»).
+ * label - полное описание словами: подсказка при наведении и текст для скринридера.
+ */
 export const TOKEN_KIND = {
   CHIP: 'chip',
   OR: 'or',
   TEXT: 'text',
+  LINE: 'line',
 } as const
 
+/** Часть строки LINE: слово или иконка. */
+export type LinePart = { text: string } | { icon: IconName }
+
 export type EffectToken
-  = | { kind: typeof TOKEN_KIND.CHIP, icon: IconName, color: string, rgb: string, value: string }
+  = | { kind: typeof TOKEN_KIND.CHIP, icon: IconName, color: string, rgb: string, value?: string, label: string, iconless?: boolean }
     | { kind: typeof TOKEN_KIND.OR }
-    | { kind: typeof TOKEN_KIND.TEXT, icon: IconName, label: string }
+    | { kind: typeof TOKEN_KIND.TEXT, icon?: IconName, label: string }
+    | { kind: typeof TOKEN_KIND.LINE, parts: LinePart[], label: string }
 
 const SCRAP_ZONE_LABEL: Readonly<Record<ScrapZone, string>> = {
   [SCRAP_ZONE.HAND]: 'руки',
   [SCRAP_ZONE.DISCARD]: 'сброса',
   [SCRAP_ZONE.TRADE_ROW]: 'торгового ряда',
+}
+
+/** «из руки или сброса»: откуда утилизируется карта. */
+function scrapSource(from: readonly ScrapZone[]): string {
+  return `из ${from.map(zone => SCRAP_ZONE_LABEL[zone]).join(' или ')}`
+}
+
+/** Что взять за каждую сыгранную карту фракции: «за каждого сыгранного слизня». */
+const PER_PLAYED_LABEL: Readonly<Record<Faction, string>> = {
+  [FACTION.NEUTRAL]: 'за каждую сыгранную нейтральную карту',
+  [FACTION.TRADE_FEDERATION]: 'за каждую сыгранную карту Торговой федерации',
+  [FACTION.BLOB]: 'за каждого сыгранного слизня',
+  [FACTION.MACHINE_CULT]: 'за каждую сыгранную карту Технокульта',
+  [FACTION.STAR_EMPIRE]: 'за каждую сыгранную карту Звёздной империи',
 }
 
 export function scrapEffectLabel(from: readonly ScrapZone[], optional: boolean, repeat = 1, drawPerScrap = false): string {
@@ -176,7 +199,7 @@ function textEffect(effect: Effect): { icon: IconName, label: string } | null {
     case EFFECT_TYPE.DRAW_PER_PLAYED:
       return { icon: ICON.DRAW, label: `Возьмите по карте за каждую сыгранную карту ${FACTION_GENITIVE[effect.faction]}` }
     case EFFECT_TYPE.DISCARD_DRAW:
-      return { icon: ICON.OPPONENT_DISCARD, label: `Сбросьте до ${effect.max} карт и возьмите столько же` }
+      return { icon: ICON.DISCARD_DRAW, label: `Сбросьте до ${effect.max} карт и возьмите столько же` }
     case EFFECT_TYPE.COPY_SHIP:
       return { icon: ICON.SHIP, label: 'Скопируйте другой корабль, сыгранный в этот ход' }
     default:
@@ -184,21 +207,67 @@ function textEffect(effect: Effect): { icon: IconName, label: string } | null {
   }
 }
 
-const NEUTRAL_CHIP = { color: '#D7E2FA', rgb: '215,226,250' }
+export const NEUTRAL_CHIP = { color: '#D7E2FA', rgb: '215,226,250' }
 
+/** Полное описание эффекта словами: подсказка к значку и текст для скринридера. */
+function effectLabel(effect: Effect): string {
+  switch (effect.type) {
+    case EFFECT_TYPE.GAIN:
+      return `+${effect.amount} ${RESOURCE_META[effect.resource].genitive}`
+    case EFFECT_TYPE.DRAW:
+      return `Возьмите ${effect.amount} ${cardsWord(effect.amount)}`
+    default:
+      return textEffect(effect)?.label ?? ''
+  }
+}
+
+const chip = (icon: IconName, label: string, value?: string): EffectToken => ({ kind: TOKEN_KIND.CHIP, icon, ...NEUTRAL_CHIP, value, label })
+
+/**
+ * Эффект как токены для карты. Простые эффекты - значок (с числом, если оно есть); способности с условием или
+ * пояснением получают ещё строку текста: откуда утилизировать, за что брать карты.
+ */
 export function effectTokens(effect: Effect): EffectToken[] {
+  const label = effectLabel(effect)
   switch (effect.type) {
     case EFFECT_TYPE.GAIN: {
       const meta = RESOURCE_META[effect.resource]
-      return [{ kind: TOKEN_KIND.CHIP, icon: meta.icon, color: meta.color, rgb: meta.rgb, value: `+${effect.amount}` }]
+      return [{ kind: TOKEN_KIND.CHIP, icon: meta.icon, color: meta.color, rgb: meta.rgb, value: `+${effect.amount}`, label, iconless: true }]
     }
     case EFFECT_TYPE.DRAW:
-      return [{ kind: TOKEN_KIND.CHIP, icon: ICON.DRAW, ...NEUTRAL_CHIP, value: `+${effect.amount}` }]
+      return [chip(ICON.DRAW, label, `+${effect.amount}`)]
     case EFFECT_TYPE.CHOICE:
       return effect.options.flatMap((option, index) => [
         ...(index > 0 ? [{ kind: TOKEN_KIND.OR } as const] : []),
         ...option.flatMap(effectTokens),
       ])
+    case EFFECT_TYPE.OPPONENT_DISCARD:
+      return [chip(ICON.OPPONENT_DISCARD, label, String(effect.amount))]
+    case EFFECT_TYPE.SCRAP: {
+      // Утилизация из торгового ряда - отдельный значок без числа и пояснений.
+      if (effect.from.length === 1 && effect.from[0] === SCRAP_ZONE.TRADE_ROW)
+        return [chip(ICON.SCRAP_TRADE_ROW, label)]
+      const caption = effect.drawPerScrap
+        ? 'Возьмите карту за каждую утилизированную'
+        : `${scrapSource(effect.from)}${effect.optional ? '' : ' (обязательно)'}`
+      return [chip(ICON.SCRAP, label, String(effect.repeat ?? 1)), { kind: TOKEN_KIND.TEXT, label: caption }]
+    }
+    case EFFECT_TYPE.DESTROY_BASE:
+      return [chip(ICON.DESTROY_BASE, label)]
+    case EFFECT_TYPE.ACQUIRE_SHIP:
+      return [chip(ICON.ACQUIRE_SHIP, label)]
+    case EFFECT_TYPE.SHIP_TO_DECK_TOP:
+      return [chip(ICON.DECK_TOP, label)]
+    case EFFECT_TYPE.DRAW_IF_BASES:
+      return [{
+        kind: TOKEN_KIND.LINE,
+        parts: [{ text: `+${effect.amount}` }, { icon: ICON.DRAW }, { text: `если от ${effect.minBases}` }, { icon: ICON.BASE }],
+        label,
+      }]
+    case EFFECT_TYPE.DRAW_PER_PLAYED:
+      return [chip(ICON.DRAW, label, '+X'), { kind: TOKEN_KIND.TEXT, label: PER_PLAYED_LABEL[effect.faction] }]
+    case EFFECT_TYPE.DISCARD_DRAW:
+      return [chip(ICON.DISCARD_DRAW, label, String(effect.max))]
     default: {
       const text = textEffect(effect)
       return text ? [{ kind: TOKEN_KIND.TEXT, icon: text.icon, label: text.label }] : []
@@ -209,8 +278,9 @@ export function effectTokens(effect: Effect): EffectToken[] {
 /** Одна строка способностей на карте. */
 export interface AbilityRow {
   kind: AbilityKind
+  /** Значки (и слово «ИЛИ» между вариантами). */
   chips: EffectToken[]
-  /** Текстовые токены: рядом с чипами их нет - идут в строку, иначе под ними. */
+  /** Текстовые токены и строки с иконками: рядом с чипами их нет - идут в строку, иначе под ними. */
   texts: EffectToken[]
 }
 
@@ -240,8 +310,8 @@ export function abilityRows(cardId: string): AbilityRow[] {
     const tokens = effects.flatMap(effectTokens)
     rows.push({
       kind,
-      chips: tokens.filter(token => token.kind !== TOKEN_KIND.TEXT),
-      texts: tokens.filter(token => token.kind === TOKEN_KIND.TEXT),
+      chips: tokens.filter(token => token.kind === TOKEN_KIND.CHIP || token.kind === TOKEN_KIND.OR),
+      texts: tokens.filter(token => token.kind === TOKEN_KIND.TEXT || token.kind === TOKEN_KIND.LINE),
     })
   }
   return rows

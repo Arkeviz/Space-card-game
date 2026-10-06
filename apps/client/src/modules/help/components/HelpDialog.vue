@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import AppDialog from '@/common/ui/AppDialog.vue'
 import ChipGroup from '@/common/ui/ChipGroup.vue'
 import GameButton from '@/common/ui/GameButton.vue'
+import { IconLegend } from '@/modules/cards'
 import { HELP_SECTIONS } from '../lib/help-content'
 
 /** Справка: правила в нескольких разделах и таблица управления. Разделы переключаются кнопками-чипами. */
@@ -30,6 +31,7 @@ const section = computed(() => HELP_SECTIONS.find(item => item.id === chosen.val
             {{ item }}
           </li>
         </ul>
+        <IconLegend v-else-if="block.kind === 'legend'" />
         <table v-else class="help__keys">
           <tbody>
             <tr v-for="row in block.rows" :key="row.action">

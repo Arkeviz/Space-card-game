@@ -1,5 +1,6 @@
 export { default as CardThumb } from './components/CardThumb.vue'
 export { default as CardView } from './components/CardView.vue'
+export { default as IconLegend } from './components/IconLegend.vue'
 export { ABILITY_STATUS, cardName, describeEffectShort, effectTokens, FACTION_META, KIND_LABEL, TOKEN_KIND } from './lib/card-meta'
 export type { AbilityStatus } from './lib/card-meta'
 export { CARD_FORM, CARD_SIZE, CARD_STATE } from './lib/card-visual'
