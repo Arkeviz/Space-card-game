@@ -6,7 +6,7 @@ import GameButton from '@/common/ui/GameButton.vue'
 import { IconLegend } from '@/modules/cards'
 import { HELP_SECTIONS } from '../lib/help-content'
 
-/** Справка: правила в нескольких разделах и таблица управления. Разделы переключаются кнопками-чипами. */
+/** Справка: правила в нескольких разделах и таблица управления. Разделы переключаются кнопками-чипами, закреплёнными над прокручиваемым текстом. */
 defineEmits<{ close: [] }>()
 
 const options = HELP_SECTIONS.map(section => ({ value: section.id, label: section.title }))
@@ -16,7 +16,9 @@ const section = computed(() => HELP_SECTIONS.find(item => item.id === chosen.val
 
 <template>
   <AppDialog title="Справка" eyebrow="ПРАВИЛА И УПРАВЛЕНИЕ" :width="1000" :max-height="900" closable :z-index="580" @close="$emit('close')">
-    <ChipGroup v-model="chosen" label="Разделы справки" :options="options" />
+    <template #toolbar>
+      <ChipGroup v-model="chosen" label="Разделы справки" :options="options" />
+    </template>
 
     <article :key="section.id" class="help" :aria-label="section.title">
       <h3 class="help__title">

@@ -5,10 +5,11 @@
  * и окно должно масштабироваться вместе с ней.
  */
 import { onClickOutside, onKeyStroke } from '@vueuse/core'
-import { onBeforeUnmount, onMounted, provide, useId, useTemplateRef } from 'vue'
+import { inject, onBeforeUnmount, onMounted, provide, useId, useTemplateRef } from 'vue'
 import AppIcon from './AppIcon.vue'
 import { DIALOG_LAYER_KEY } from './dialog-layer'
 import { ICON } from './icons'
+import { STAGE_DIM_KEY } from './stage-dim'
 
 const props = withDefaults(defineProps<{
   title?: string
@@ -41,6 +42,14 @@ const titleId = useId()
 const panel = useTemplateRef<HTMLElement>('panel')
 provide(DIALOG_LAYER_KEY, useTemplateRef<HTMLElement>('overlay'))
 let previousFocus: HTMLElement | null = null
+
+// Окно затемняет сцену, а поля вокруг неё затемняет StageScaler: просим его об этом на время жизни окна.
+const stageDim = inject(STAGE_DIM_KEY, null)
+let releaseDim: (() => void) | undefined
+onMounted(() => {
+  releaseDim = stageDim?.acquire()
+})
+onBeforeUnmount(() => releaseDim?.())
 
 onClickOutside(panel, () => {
   if (props.closeOnClickOverlay ?? props.closable)
@@ -126,6 +135,11 @@ onBeforeUnmount(() => previousFocus?.focus())
         {{ title }}
       </h2>
 
+      <!-- Под заголовком, вне прокрутки: переключатели разделов и подобное, что не должно уезжать вместе с телом. -->
+      <div v-if="$slots.toolbar" class="dialog__toolbar">
+        <slot name="toolbar" />
+      </div>
+
       <div class="dialog__body">
         <slot />
       </div>
@@ -144,7 +158,7 @@ onBeforeUnmount(() => previousFocus?.focus())
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(4, 7, 14, 0.68);
+  background: var(--c-scrim);
 }
 
 .dialog {
@@ -214,6 +228,10 @@ onBeforeUnmount(() => previousFocus?.focus())
   margin: -10px;
   padding: 10px;
   overflow-y: auto;
+}
+
+.dialog__toolbar {
+  flex: none;
 }
 
 .dialog__footer {
