@@ -56,15 +56,15 @@ function confirm(): void {
     <div v-if="open" ref="popover" class="menu__popover" role="menu">
       <template v-if="!confirming">
         <button type="button" class="menu__item" role="menuitem" @click="choose('settings')">
-          <AppIcon :name="ICON.MENU" :size="16" />
+          <AppIcon :name="ICON.MENU" :size="20" />
           <span>Настройки</span>
         </button>
         <button type="button" class="menu__item" role="menuitem" @click="choose('help')">
-          <AppIcon :name="ICON.INFO" :size="16" />
+          <AppIcon :name="ICON.INFO" :size="20" />
           <span>Справка</span>
         </button>
         <button type="button" class="menu__item menu__item--danger" role="menuitem" @click="confirming = true">
-          <AppIcon :name="ICON.FLAG" :size="16" />
+          <AppIcon :name="ICON.FLAG" :size="20" />
           <span>Сдаться</span>
         </button>
       </template>
@@ -117,9 +117,9 @@ function confirm(): void {
   z-index: 400;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  width: 232px;
-  padding: 10px;
+  gap: 12px;
+  width: 320px;
+  padding: 12px;
   background: var(--c-surface);
   box-shadow: inset 0 0 0 1px rgba(79, 216, 255, 0.4), 0 20px 50px rgba(0, 0, 0, 0.6);
 }
@@ -127,7 +127,7 @@ function confirm(): void {
 .menu__question {
   padding: 4px 4px 0;
   color: var(--c-text-soft);
-  font: 400 16px/21px var(--font-text);
+  font: 400 18px/24px var(--font-text);
 }
 
 .menu__actions {
@@ -135,21 +135,26 @@ function confirm(): void {
   gap: 8px;
 }
 
+/* В колонке пункт держит свою высоту; flex: 1 нужен только в ряду кнопок подтверждения (.menu__actions). */
 .menu__item {
   display: flex;
-  flex: 1;
+  flex: none;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  height: 44px;
-  padding: 0 12px;
+  gap: 12px;
+  height: 60px;
+  padding: 0 8px;
   border: 0;
   background: transparent;
   color: var(--c-text-quiet);
-  font: 600 15px/1 var(--font-mono);
+  font: 600 17px/1 var(--font-mono);
   letter-spacing: 0.06em;
   box-shadow: inset 0 0 0 1px rgba(143, 163, 200, 0.4);
   cursor: pointer;
+}
+
+.menu__actions .menu__item {
+  flex: 1;
 }
 
 .menu__item:hover {
