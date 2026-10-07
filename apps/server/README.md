@@ -250,7 +250,7 @@ Let's Encrypt для `DOMAIN`, редиректит HTTP на HTTPS, отдаё�
 
 ### Автодеплой (GitHub Actions)
 
-Job `deploy` в `.github/workflows/ci.yml` после зелёных `check` и `docker` на `main` (push или ручной запуск) заходит на
+Job `deploy` в `.github/workflows/ci.yml` после зелёного `check` на `main` (push или ручной запуск) заходит на
 сервер по SSH и запускает `deploy/deploy.sh` с SHA проверенного коммита. Ключу деплоя на сервере разрешена только эта команда.
 Настройка один раз:
 
@@ -266,15 +266,13 @@ Job `deploy` в `.github/workflows/ci.yml` после зелёных `check` и 
    репозиторий по HTTPS).
 3. Отпечаток сервера: `ssh-keyscan -t ed25519 <ip>` (сверить с `ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub` на сервере).
 4. В GitHub: Settings -> Environments -> `production`, секреты `DEPLOY_HOST` (IP или домен), `DEPLOY_USER`, `DEPLOY_SSH_KEY`
-   (содержимое приватного `deploy_key`, после этого файл удалить) и `DEPLOY_KNOWN_HOSTS` (вывод `ssh-keyscan`). Затем
-   Settings -> Secrets and variables -> Actions -> Variables: `DEPLOY_ENABLED` = `true`.
+   (содержимое приватного `deploy_key`, после этого файл удалить) и `DEPLOY_KNOWN_HOSTS` (вывод `ssh-keyscan`).
 
-Пока `DEPLOY_ENABLED` не задана, job пропускается. Порт 22 должен быть открыт для всех адресов: у раннеров GitHub нет
-постоянных IP. На `main` новый запуск CI ждёт предыдущий, а не отменяет его, чтобы не оборвать деплой на середине.
+Порт 22 должен быть открыт для всех адресов: у раннеров GitHub нет постоянных IP. На `main` новый запуск CI ждёт предыдущий, а не отменяет его, чтобы не оборвать деплой на середине.
 
 `apps/server/Dockerfile` сохраняет раскладку монорепозитория (`packages/*`, `apps/server`): Node запускает `.ts` напрямую и не
 снимает типы с файлов внутри `node_modules`, а workspace-пакеты - ссылки на `packages/*` с реальным путём вне `node_modules`.
-CI (`.github/workflows/ci.yml`): lint, типы и тесты (с сервисом postgres для интеграционного теста) и сборка обоих образов без публикации.
+CI (`.github/workflows/ci.yml`): lint, типы и тесты (с сервисом postgres для интеграционного теста) и деплой на `main`. Сборка образов в CI закомментирована (их собирает деплой на сервере).
 
 ## Известные ограничения
 

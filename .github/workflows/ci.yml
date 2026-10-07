@@ -51,35 +51,37 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
 
-  docker:
-    # Образы только собираются, не публикуются: проверка, что Dockerfile'ы рабочие.
-    needs: check
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        image:
-          - {name: server, dockerfile: apps/server/Dockerfile}
-          - {name: client, dockerfile: apps/client/Dockerfile}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: ${{ matrix.image.dockerfile }}
-          push: false
-          cache-from: type=gha,scope=${{ matrix.image.name }}
-          cache-to: type=gha,scope=${{ matrix.image.name }},mode=max
+  # Сборка образов отключена ради минут GitHub Actions: образы и так собирает деплой на сервере, и сломанный Dockerfile
+  # роняет job deploy. Вернуть - раскомментировать блок и добавить docker в needs у deploy.
+  # docker:
+  #   # Образы только собираются, не публикуются: проверка, что Dockerfile'ы рабочие.
+  #   needs: check
+  #   runs-on: ubuntu-latest
+  #   strategy:
+  #     matrix:
+  #       image:
+  #         - {name: server, dockerfile: apps/server/Dockerfile}
+  #         - {name: client, dockerfile: apps/client/Dockerfile}
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         persist-credentials: false
+  #     - uses: docker/setup-buildx-action@v3
+  #     - uses: docker/build-push-action@v6
+  #       with:
+  #         context: .
+  #         file: ${{ matrix.image.dockerfile }}
+  #         push: false
+  #         cache-from: type=gha,scope=${{ matrix.image.name }}
+  #         cache-to: type=gha,scope=${{ matrix.image.name }},mode=max
 
   deploy:
     # Выкладка на боевой сервер (deploy/deploy.sh по SSH). Включается переменной репозитория DEPLOY_ENABLED = true,
     # секреты - в окружении production; настройка - apps/server/README.md, раздел «Автодеплой».
-    needs: [check, docker]
+    needs: check
+    environment: production
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.DEPLOY_ENABLED == 'true'
     runs-on: ubuntu-latest
-    environment: production
     timeout-minutes: 30
     steps:
       - name: Deploy
