@@ -75,7 +75,7 @@ export function describeStep(group: readonly GameEvent[], before: TableState, af
       case EVENT_TYPE.ABILITY_ACTIVATED: {
         const entry = [...before.self.inPlay, ...before.opponent.inPlay].find(played => played.card.id === event.cardId)
         const instanceCardId = entry?.card.cardId
-        // Утилизированной карты уже нет на столе: берём её из свалки после шага.
+        // Утилизированной карты уже нет на столе: берём её из утиля после шага.
         const scrapped = after.scrapHeap.find(card => card.id === event.cardId)
         const cardId = instanceCardId ?? scrapped?.cardId
         if (!cardId)
