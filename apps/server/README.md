@@ -203,7 +203,7 @@ DROP ROLE migrator;
 
 `docker-compose.prod.yml` накладывается на `docker-compose.yml` и добавляет Caddy: он получает и сам продлевает сертификат
 Let's Encrypt для `DOMAIN`, редиректит HTTP на HTTPS, отдаёт `/ws` прямо серверу (с настоящим адресом игрока в
-`X-Forwarded-For`, поэтому лимиты по адресу включены), а остальное - клиенту (`deploy/Caddyfile`). Наружу открыты только порты
+`X-Forwarded-For`, поэтому лимиты по адресу работают, если включить их в `.env`), а остальное - клиенту (`deploy/Caddyfile`). Наружу открыты только порты
 80 и 443 (и 443/udp для HTTP/3): у `client` и `db` публикация портов снята, иначе Docker открыл бы их мимо UFW.
 
 1. **DNS.** В зоне домена A-запись (например, `star-realms`) на IPv4 сервера; проверка - `dig +short star-realms.arkeviz.ru`.

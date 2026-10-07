@@ -9,12 +9,6 @@ services:
     # совсем (!reset - Docker Compose 2.24.4 и новее).
     ports: !reset []
 
-  server:
-    environment:
-      # За Caddy сервер видит настоящий адрес игрока, поэтому лимиты по адресу включены (0 в .env - выключить).
-      MAX_CONNECTIONS_PER_IP: '${MAX_CONNECTIONS_PER_IP:-20}'
-      MATCH_STARTS_PER_HOUR: '${MATCH_STARTS_PER_HOUR:-60}'
-
   client:
     # Без TLS порт 8181 был бы открыт в интернет мимо Caddy.
     ports: !reset []
