@@ -2,7 +2,7 @@
 import type { Pools } from '@space/engine'
 import type { FxItem } from '../lib/fx'
 import type { Hint, TurnInfo } from '../lib/turn-info'
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useTick } from '@/common/composables/useTick'
 import AppIcon from '@/common/ui/AppIcon.vue'
 import { ICON } from '@/common/ui/icons'
@@ -28,11 +28,25 @@ const props = defineProps<{
   fx: FxItem[]
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
   endTurn: []
   playAll: []
   attack: []
 }>()
+
+/**
+ * Недоступная кнопка «Атаковать» остаётся нажимаемой (aria-disabled, а не disabled): по клику подсвечивается
+ * подсказка под пулами, в которой написано, что мешает атаковать (например, аванпост соперника). Ключ меняется
+ * при каждом клике, и анимация подсветки запускается заново.
+ */
+const flashCount = ref(0)
+
+function onAttack(): void {
+  if (props.attackAmount === 0)
+    flashCount.value += 1
+  else
+    emit('attack')
+}
 
 const now = useTick()
 const remaining = computed(() => (props.deadline === null ? null : Math.max(0, props.deadline - now.value.getTime())))
@@ -92,7 +106,7 @@ const combatFx = computed(() => props.fx.filter(item => item.target === FX_TARGE
       </div>
     </div>
 
-    <p class="hint">
+    <p :key="flashCount" class="hint" :class="{ 'hint--flash': flashCount > 0 }">
       <AppIcon :name="hint.icon" :size="16" :style="{ color: hint.color }" />
       <span>{{ hint.text }}</span>
     </p>
@@ -103,7 +117,7 @@ const combatFx = computed(() => props.fx.filter(item => item.target === FX_TARGE
     </button>
 
     <!-- Кнопка остаётся на месте и после разрушения базы: без атаки она просто неактивна. -->
-    <button v-if="info.mine" type="button" class="attack" aria-keyshortcuts="A" :disabled="attackAmount === 0" @click="$emit('attack')">
+    <button v-if="info.mine" type="button" class="attack" aria-keyshortcuts="A" :aria-disabled="attackAmount === 0" @click="onAttack">
       <AppIcon :name="ICON.COMBAT" :size="16" :stroke="2.2" />
       <span>АТАКОВАТЬ<template v-if="attackAmount > 0"> · {{ attackAmount }}</template></span>
       <kbd class="key" aria-hidden="true">A</kbd>
@@ -254,13 +268,41 @@ const combatFx = computed(() => props.fx.filter(item => item.target === FX_TARGE
   font-variant-numeric: tabular-nums;
 }
 
+/* Отступы с компенсирующими полями: текст на месте, а подсветка по клику на «Атаковать» получается с запасом вокруг. */
 .hint {
   display: flex;
   align-items: flex-start;
   gap: 9px;
-  padding: 0 2px;
+  margin: -6px -8px;
+  padding: 6px 10px;
   color: var(--c-text-quiet);
   font: 400 13px/17px var(--font-text);
+}
+
+.hint--flash {
+  animation: hint-flash 1.6s ease-in-out;
+}
+
+@keyframes hint-flash {
+  0%,
+  100% {
+    background: transparent;
+    box-shadow: inset 0 0 0 1px transparent;
+  }
+
+  15%,
+  55% {
+    background: rgba(255, 90, 79, 0.22);
+    color: var(--c-text-strong);
+    box-shadow: inset 0 0 0 1px rgba(255, 90, 79, 0.85);
+  }
+
+  35%,
+  75% {
+    background: rgba(255, 90, 79, 0.07);
+    color: var(--c-text-strong);
+    box-shadow: inset 0 0 0 1px rgba(255, 90, 79, 0.4);
+  }
 }
 
 .hint :deep(svg) {
@@ -322,22 +364,33 @@ const combatFx = computed(() => props.fx.filter(item => item.target === FX_TARGE
   margin: 0;
   padding: 0;
   border: 0;
-  background: transparent;
-  color: var(--c-combat);
-  box-shadow: inset 0 0 0 1px var(--c-combat);
-  font: 600 13px/1 var(--font-mono);
+  background: var(--c-combat);
+  color: #1a0605;
+  box-shadow: 0 0 22px rgba(255, 90, 79, 0.35);
+  font: 700 13px/1 var(--font-mono);
   letter-spacing: 0.14em;
   cursor: pointer;
+  clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
 }
 
-.attack:hover:not(:disabled) {
-  background: rgba(255, 90, 79, 0.12);
+.attack:hover:not([aria-disabled='true']) {
+  filter: brightness(1.1);
 }
 
-.attack:disabled {
+.attack[aria-disabled='true'] {
+  background: rgba(143, 163, 200, 0.08);
   color: var(--c-dim);
   box-shadow: inset 0 0 0 1px rgba(143, 163, 200, 0.25);
-  cursor: default;
+}
+
+.attack .key {
+  color: #1a0605;
+  box-shadow: inset 0 0 0 1px rgba(26, 6, 5, 0.5);
+}
+
+.attack[aria-disabled='true'] .key {
+  color: var(--c-muted);
+  box-shadow: inset 0 0 0 1px rgba(143, 163, 200, 0.4);
 }
 
 .end {

@@ -50,6 +50,7 @@ const scrapLabel = computed(() => (props.node.cardId ? `Утилизироват
     <template v-if="activatable">
       <span class="node__pulse" aria-hidden="true" />
       <span class="node__pulse node__pulse--late" aria-hidden="true" />
+      <span class="node__halo" aria-hidden="true" />
     </template>
     <div class="node__flip" data-flip>
       <div class="node__face node__face--back">
@@ -94,6 +95,12 @@ const scrapLabel = computed(() => (props.node.cardId ? `Утилизироват
       @pointerleave="emit('highlight', null)"
     />
 
+    <!-- Ярлык над картой: эффект готов, нажмите на карту. -->
+    <span v-if="activatable" class="node__ready" aria-hidden="true">
+      <AppIcon :name="ICON.ARROW" :size="12" :stroke="3" />
+      АКТИВИРОВАТЬ
+    </span>
+
     <button
       v-if="node.scrapCommand"
       type="button"
@@ -129,25 +136,75 @@ const scrapLabel = computed(() => (props.node.cardId ? `Утилизироват
 .node__pulse {
   position: absolute;
   inset: 0;
-  background: rgba(79, 216, 255, 0.55);
+  background: rgba(79, 216, 255, 0.9);
   clip-path: polygon(16px 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%, 0 16px);
-  animation: node-pulse 1.8s ease-out infinite;
+  animation: node-pulse 1.4s ease-out infinite;
   pointer-events: none;
 }
 
 .node__pulse--late {
-  animation-delay: 0.9s;
+  animation-delay: 0.7s;
 }
 
 @keyframes node-pulse {
   from {
-    opacity: 0.8;
+    opacity: 1;
     transform: scale(1);
   }
 
   to {
     opacity: 0;
-    transform: scale(1.16);
+    transform: scale(1.24);
+  }
+}
+
+/* Постоянное свечение вокруг карты: видно и между волнами. */
+.node__halo {
+  position: absolute;
+  inset: -5px;
+  background: rgba(79, 216, 255, 0.75);
+  filter: blur(9px);
+  animation: node-halo 1.1s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+@keyframes node-halo {
+  from {
+    opacity: 0.55;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.node__ready {
+  position: absolute;
+  top: -15px;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 10px 0 7px;
+  background: var(--c-me);
+  color: var(--c-me-ink);
+  font: 700 10px/1 var(--font-mono);
+  letter-spacing: 0.14em;
+  white-space: nowrap;
+  box-shadow: 0 0 14px rgba(79, 216, 255, 0.7);
+  transform: translateX(-50%);
+  animation: node-ready 1.1s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+@keyframes node-ready {
+  from {
+    transform: translate(-50%, 0);
+  }
+
+  to {
+    transform: translate(-50%, -3px);
   }
 }
 
@@ -160,6 +217,15 @@ const scrapLabel = computed(() => (props.node.cardId ? `Утилизироват
 
   .node__pulse--late {
     display: none;
+  }
+
+  .node__halo,
+  .node__ready {
+    animation: none;
+  }
+
+  .node__ready {
+    transform: translateX(-50%);
   }
 }
 

@@ -437,6 +437,12 @@ const kindLabel = computed(() => (card.value ? KIND_LABEL[card.value.kind] : '')
   border-top-color: transparent;
 }
 
+/* Способность готова: строка залита голубым, чтобы её было видно с первого взгляда. */
+.card__row--ready {
+  background: linear-gradient(90deg, rgba(79, 216, 255, 0.28), rgba(79, 216, 255, 0.1));
+  box-shadow: inset 0 0 0 1px rgba(79, 216, 255, 0.7);
+}
+
 .card__row-content {
   display: flex;
   flex-direction: column;

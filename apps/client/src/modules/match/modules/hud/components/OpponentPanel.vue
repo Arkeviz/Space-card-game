@@ -11,7 +11,6 @@ const props = defineProps<{
   /** Имя соперника. */
   name: string
   authority: number
-  handCount: number
   /** Сейчас ход соперника. */
   active: boolean
   /** У соперника есть аванпост: игрока атаковать нельзя. */
@@ -38,35 +37,35 @@ const returnClock = computed(() => {
 <template>
   <section class="panel" :class="{ 'panel--active': active }" :aria-label="`Соперник: ${name}`">
     <span class="panel__corner" />
-    <!-- Атаковать соперника можно кликом по аватару: это та же команда, что и кнопка «Атаковать» в панели хода. -->
-    <button
-      type="button"
-      class="panel__avatar"
-      :class="{ 'panel__avatar--target': attackAmount > 0 }"
-      :disabled="attackAmount === 0"
-      :aria-label="attackAmount > 0 ? `Атаковать соперника ${name}: ${attackAmount}` : `Соперник: ${name}`"
-      @click="$emit('attack')"
-    >
-      <AppIcon :name="attackAmount > 0 ? ICON.COMBAT : ICON.USER" :size="26" :stroke="attackAmount > 0 ? 2 : 1.5" />
-    </button>
+    <!-- Сверху аватар и авторитет, под ними на всю ширину имя (длинное переносится). -->
+    <div class="panel__top">
+      <!-- Атаковать соперника можно кликом по аватару: это та же команда, что и кнопка «Атаковать» в панели хода. -->
+      <button
+        type="button"
+        class="panel__avatar"
+        :class="{ 'panel__avatar--target': attackAmount > 0 }"
+        :disabled="attackAmount === 0"
+        :aria-label="attackAmount > 0 ? `Атаковать соперника ${name}: ${attackAmount}` : `Соперник: ${name}`"
+        @click="$emit('attack')"
+      >
+        <AppIcon :name="attackAmount > 0 ? ICON.COMBAT : ICON.USER" :size="26" :stroke="attackAmount > 0 ? 2 : 1.5" />
+      </button>
+      <div class="panel__authority">
+        <div class="panel__value">
+          {{ authority }}
+          <FxFloat :items="fx" />
+        </div>
+        <p class="panel__label">
+          <AppIcon :name="ICON.AUTHORITY" :size="11" :stroke="2.4" />
+          <span>АВТОРИТЕТ</span>
+        </p>
+      </div>
+    </div>
     <div class="panel__info">
       <p class="panel__name" :title="name">
         <span class="panel__dot" :class="{ 'panel__dot--offline': !online }" aria-hidden="true" />
         <span>{{ name }}</span>
         <span class="visually-hidden">{{ online ? ', на связи' : ', нет связи' }}</span>
-      </p>
-      <p class="panel__sub">
-        РУКА {{ handCount }}
-      </p>
-    </div>
-    <div class="panel__authority">
-      <div class="panel__value">
-        {{ authority }}
-        <FxFloat :items="fx" />
-      </div>
-      <p class="panel__label">
-        <AppIcon :name="ICON.AUTHORITY" :size="11" :stroke="2.4" />
-        <span>АВТОРИТЕТ</span>
       </p>
     </div>
 
@@ -85,7 +84,8 @@ const returnClock = computed(() => {
 .panel {
   position: relative;
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  justify-content: center;
   gap: 12px;
   width: 100%;
   height: 100%;
@@ -125,9 +125,14 @@ const returnClock = computed(() => {
   clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
 }
 
+.panel__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
 .panel__info {
   display: flex;
-  flex: 1;
   flex-direction: column;
   gap: 6px;
   min-width: 0;
@@ -165,17 +170,14 @@ const returnClock = computed(() => {
   box-shadow: inset 0 0 0 1px rgba(255, 90, 79, 0.6);
 }
 
+/* Имя переносится: до трёх строк (максимум 20 знаков помещается в две), длинное слово без пробелов ломается. */
 .panel__name {
+  display: -webkit-box;
   overflow: hidden;
-  font: 600 15px/1.2 var(--font-text);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.panel__sub {
-  color: var(--c-muted);
-  font: 500 10px/1 var(--font-mono);
-  letter-spacing: 0.1em;
+  font: 600 17px/1.25 var(--font-text);
+  overflow-wrap: anywhere;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
 }
 
 .panel__authority {

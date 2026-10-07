@@ -86,7 +86,7 @@ export const ICON_LEGEND: readonly LegendGroup[] = [
       { sample: { kind: LEGEND_SAMPLE.EMBLEMS }, title: 'Способность союзника', text: 'Строка с эмблемой фракции срабатывает, если на вашем столе есть другая карта этой фракции.' },
       { sample: { kind: LEGEND_SAMPLE.PREFIX, icon: ICON.SCRAP }, title: 'Утилизация этой карты', text: 'Строка с корзиной: уберите эту карту из игры навсегда, чтобы получить эффект.' },
       { sample: { kind: LEGEND_SAMPLE.DEFENSE }, title: 'Защита', text: 'Столько атаки нужно потратить, чтобы уничтожить базу. У аванпоста значок залит: пока он стоит, бить по игроку и другим базам нельзя.' },
-      { sample: { kind: LEGEND_SAMPLE.MARK, icon: ICON.ARROW, color: 'var(--c-me)' }, title: 'Можно активировать', text: 'Способность готова: нажмите на карту.' },
+      { sample: { kind: LEGEND_SAMPLE.MARK, icon: ICON.ARROW, color: 'var(--c-me)' }, title: 'Можно активировать', text: 'Способность готова: карта светится голубым, строка способности залита, над картой метка «АКТИВИРОВАТЬ». Нажмите на карту.' },
       { sample: { kind: LEGEND_SAMPLE.MARK, icon: ICON.CHECK, color: 'var(--c-muted)' }, title: 'Использовано', text: 'Способность уже сработала в этот ход.' },
     ],
   },

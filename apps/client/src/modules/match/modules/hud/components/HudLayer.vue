@@ -79,7 +79,6 @@ const hint = computed(() => hintFor(props.table, props.legal))
       <OpponentPanel
         :name="opponentName"
         :authority="table.opponent.authority"
-        :hand-count="table.opponent.handCount"
         :active="!mine"
         :protected-by-outpost="opponentHasOutpost"
         :attack-amount="attackAmount"

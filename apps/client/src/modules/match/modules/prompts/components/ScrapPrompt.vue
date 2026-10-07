@@ -58,10 +58,10 @@ const title = computed(() => (props.source ? cardName(props.source.cardId) : 'У
 const lead = computed(() => {
   const draw = props.drawPerScrap ? ' За каждую вы возьмёте новую карту.' : ''
   if ((props.remaining ?? 1) > 1)
-    return `Можно навсегда убрать на свалку до ${props.remaining} карт, по одной.${draw}`
+    return `Можно навсегда убрать в утиль до ${props.remaining} карт, по одной.${draw}`
   return props.optional
-    ? `Можно навсегда убрать одну карту на свалку.${draw}`
-    : `Выберите карту, которую нужно навсегда убрать на свалку.${draw}`
+    ? `Можно навсегда убрать одну карту на утиль.${draw}`
+    : `Выберите карту, которую нужно навсегда убрать в утиль.${draw}`
 })
 
 function confirm(): void {
@@ -150,9 +150,9 @@ const order = computed(() => sections.value.flatMap(section => section.cards.map
 }
 
 .section__title {
-  color: var(--c-muted);
-  font: 600 12px/1 var(--font-mono);
-  letter-spacing: 0.18em;
+  color: var(--c-text-quiet);
+  font: 600 18px/1 var(--font-mono);
+  letter-spacing: 0.14em;
 }
 
 .section__cards {
