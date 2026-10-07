@@ -1,0 +1,44 @@
+# Боевой сервер: накладывается поверх docker-compose.yml и добавляет Caddy с HTTPS (сертификат Let's Encrypt
+# он получает и продлевает сам). Запуск: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build,
+# или задать COMPOSE_FILE в .env (образец - .env.example), и тогда хватает docker compose up -d --build.
+# Шаги развёртывания - apps/server/README.md, раздел «Развёртывание на сервере».
+
+services:
+  db:
+    # Наружу смотрят только 80 и 443 Caddy. Порты, опубликованные Docker'ом, обходят UFW, поэтому лишние снимаются
+    # совсем (!reset - Docker Compose 2.24.4 и новее).
+    ports: !reset []
+
+  server:
+    environment:
+      # За Caddy сервер видит настоящий адрес игрока, поэтому лимиты по адресу включены (0 в .env - выключить).
+      MAX_CONNECTIONS_PER_IP: '${MAX_CONNECTIONS_PER_IP:-20}'
+      MATCH_STARTS_PER_HOUR: '${MATCH_STARTS_PER_HOUR:-60}'
+
+  client:
+    # Без TLS порт 8181 был бы открыт в интернет мимо Caddy.
+    ports: !reset []
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      DOMAIN: '${DOMAIN:?задайте DOMAIN в .env, образец - .env.example}'
+    ports:
+      - '80:80'
+      - '443:443'
+      # HTTP/3
+      - '443:443/udp'
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      # Сертификаты и ключ аккаунта ACME. Без тома каждый пересозданный контейнер просил бы сертификат заново
+      # и быстро упёрся бы в лимиты Let's Encrypt.
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - server
+      - client
+
+volumes:
+  caddy_data:
+  caddy_config:

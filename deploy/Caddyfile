@@ -1,0 +1,19 @@
+# Caddy на боевом сервере (docker-compose.prod.yml): HTTPS с сертификатом Let's Encrypt и прокси к игре.
+# Имя сайта берётся из переменной DOMAIN. Для этого имени Caddy сам получает сертификат (нужны открытые порты 80 и 443
+# и A-запись домена на этот сервер), продлевает его и редиректит HTTP на HTTPS.
+{$DOMAIN} {
+	header Strict-Transport-Security "max-age=31536000"
+
+	# WebSocket игры идёт прямо на сервер, мимо nginx клиента: Caddy передаёт X-Forwarded-For с настоящим адресом игрока
+	# (пришедший от клиента заголовок он отбрасывает), и сервер верит ему через TRUST_PROXY=uniquelocal. Через nginx
+	# клиента лимиты по адресу считались бы по адресу контейнера Caddy, общему для всех.
+	handle /ws {
+		reverse_proxy server:3001
+	}
+
+	# Остальное - статика клиента. Заголовки безопасности (CSP и другие) ставит nginx клиента.
+	handle {
+		encode zstd gzip
+		reverse_proxy client:80
+	}
+}

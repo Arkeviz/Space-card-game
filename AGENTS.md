@@ -31,6 +31,8 @@ pnpm db:generate                          # новая SQL-миграция по
 pnpm docker:up                            # весь стек в Docker (db + server + client), http://localhost:8181
 ```
 
+Боевой сервер (Ubuntu, HTTPS через Caddy, сертификат Let's Encrypt): `docker-compose.prod.yml` + `deploy/Caddyfile`, пошагово - в разделе «Развёртывание на сервере» [apps/server/README.md](apps/server/README.md).
+
 `docker-compose.yml` берёт пароли базы и лимиты из корневого `.env` (образец - `.env.example`, без паролей compose не запускается).
 Интеграционный тест хранилища идёт против настоящего PostgreSQL, если задан `TEST_DATABASE_URL` (после `pnpm db:up`:
 `postgres://postgres:<POSTGRES_PASSWORD>@localhost:5432/space` - тесту нужен суперпользователь, он создаёт временную базу); иначе пропускается.

@@ -163,7 +163,8 @@ Docker (например, `172.17.0.1`), поэтому в `docker-compose.yml` 
 
 ## Docker
 
-В корне репозитория лежит `docker-compose.yml` (PostgreSQL 17, сервер, клиент с nginx). Только локально, образы не публикуются.
+В корне репозитория лежит `docker-compose.yml` (PostgreSQL 17, сервер, клиент с nginx) для локального запуска; образы не публикуются.
+На боевой сервер он выкладывается вместе с `docker-compose.prod.yml` (см. «Развёртывание на сервере» ниже).
 
 ```bash
 cp .env.example .env   # пароли базы (POSTGRES_PASSWORD, APP_DB_PASSWORD): без них compose не запускается
@@ -197,6 +198,53 @@ DROP ROLE migrator;
 ```
 
 Бывший `space` становится суперпользователем `postgres`, а сервер получает новую роль `space` и владение таблицами. Затем `pnpm docker:up`.
+
+### Развёртывание на сервере (Ubuntu, HTTPS)
+
+`docker-compose.prod.yml` накладывается на `docker-compose.yml` и добавляет Caddy: он получает и сам продлевает сертификат
+Let's Encrypt для `DOMAIN`, редиректит HTTP на HTTPS, отдаёт `/ws` прямо серверу (с настоящим адресом игрока в
+`X-Forwarded-For`, поэтому лимиты по адресу включены), а остальное - клиенту (`deploy/Caddyfile`). Наружу открыты только порты
+80 и 443 (и 443/udp для HTTP/3): у `client` и `db` публикация портов снята, иначе Docker открыл бы их мимо UFW.
+
+1. **DNS.** В зоне домена A-запись (например, `star-realms`) на IPv4 сервера; проверка - `dig +short star-realms.arkeviz.ru`.
+   AAAA не добавлять: без IPv6 в Docker игроки по IPv6 пришли бы с одного адреса шлюза, и лимиты стали бы общими. Если у
+   хостера есть свой файрвол, открыть в нём 22, 80, 443 (tcp) и 443 (udp).
+2. **Система.** `sudo apt update && sudo apt upgrade -y`; отдельный пользователь с sudo и SSH-ключом, вход по паролю и root по
+   SSH отключить; файрвол:
+
+   ```bash
+   sudo ufw allow OpenSSH && sudo ufw allow 80/tcp && sudo ufw allow 443/tcp && sudo ufw allow 443/udp && sudo ufw enable
+   ```
+
+   При 2 ГБ памяти и меньше добавить swap: сборка клиента и `pnpm install` внутри `docker build` её съедают.
+3. **Docker.** Docker Engine и плагин Compose из официального apt-репозитория
+   ([инструкция для Ubuntu](https://docs.docker.com/engine/install/ubuntu/)), не snap и не `docker.io`; затем
+   `sudo usermod -aG docker $USER` и перезайти. Нужен Compose 2.24.4 или новее (`docker compose version`). Если `docker pull`
+   отвечает 403 (бывает у серверов в РФ), указать зеркало: `{"registry-mirrors": ["https://mirror.gcr.io"]}` в
+   `/etc/docker/daemon.json` и `sudo systemctl restart docker`.
+4. **Код.**
+
+   ```bash
+   git clone git@github.com:Arkeviz/Space-card-game.git ~/space-card-game && cd ~/space-card-game
+   ```
+
+   Для приватного репозитория: `ssh-keygen -t ed25519` на сервере, публичный ключ - в GitHub, Settings -> Deploy keys (только чтение).
+5. **`.env`.** `cp .env.example .env`, записать `POSTGRES_PASSWORD` и `APP_DB_PASSWORD` (`openssl rand -hex 24`), раскомментировать
+   `DOMAIN` и `COMPOSE_FILE`, затем `chmod 600 .env`. Пароли базы применяются только при первой инициализации тома `pgdata`,
+   так что задать их нужно до первого запуска.
+6. **Запуск.**
+
+   ```bash
+   docker compose up -d --build
+   docker compose ps                  # всё healthy
+   docker compose logs -f caddy       # ждать «certificate obtained successfully»
+   ```
+
+   Затем открыть `https://star-realms.arkeviz.ru` и сыграть партию из двух вкладок. Сертификаты лежат в томе `caddy_data`:
+   его не удалять (лимиты Let's Encrypt), при `docker compose down` не использовать `-v`.
+7. **Обновление.** `git pull && docker compose up -d --build && docker image prune -f`. Идущие партии сервер поднимет из базы
+   сам, игроки переподключатся по токену.
+8. **Копия базы** (например, из cron): `docker compose exec -T db pg_dump -U space space | gzip > backup-$(date +%F).sql.gz`.
 
 `apps/server/Dockerfile` сохраняет раскладку монорепозитория (`packages/*`, `apps/server`): Node запускает `.ts` напрямую и не
 снимает типы с файлов внутри `node_modules`, а workspace-пакеты - ссылки на `packages/*` с реальным путём вне `node_modules`.
