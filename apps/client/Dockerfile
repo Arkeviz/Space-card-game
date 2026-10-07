@@ -10,7 +10,9 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY packages/engine/package.json packages/engine/
 COPY packages/protocol/package.json packages/protocol/
 COPY apps/client/package.json apps/client/
-RUN pnpm install --frozen-lockfile
+# Хранилище pnpm - в кэше BuildKit: при изменении lock-файла скачиваются только новые пакеты.
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
+  pnpm install --frozen-lockfile --store-dir /pnpm/store
 
 COPY tsconfig.base.json ./
 COPY packages/engine packages/engine

@@ -17,7 +17,9 @@ COPY packages/engine/package.json packages/engine/
 COPY packages/protocol/package.json packages/protocol/
 COPY apps/server/package.json apps/server/
 COPY apps/client/package.json apps/client/
-RUN pnpm install --frozen-lockfile --prod --filter @space/server...
+# Хранилище pnpm - в кэше BuildKit: при изменении lock-файла скачиваются только новые пакеты.
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
+  pnpm install --frozen-lockfile --prod --filter @space/server... --store-dir /pnpm/store
 
 COPY packages/engine/src packages/engine/src
 COPY packages/protocol/src packages/protocol/src

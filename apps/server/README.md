@@ -242,9 +242,35 @@ Let's Encrypt для `DOMAIN`, редиректит HTTP на HTTPS, отдаё�
 
    Затем открыть `https://star-realms.arkeviz.ru` и сыграть партию из двух вкладок. Сертификаты лежат в томе `caddy_data`:
    его не удалять (лимиты Let's Encrypt), при `docker compose down` не использовать `-v`.
-7. **Обновление.** `git pull && docker compose up -d --build && docker image prune -f`. Идущие партии сервер поднимет из базы
-   сам, игроки переподключатся по токену.
+7. **Обновление.** Автоматически (см. «Автодеплой» ниже) или вручную: `sh deploy/deploy.sh` - подтягивает `origin/main`,
+   пересобирает изменившиеся образы и ждёт healthcheck'ов. Идущие партии сервер поднимет из базы сам, игроки переподключатся
+   по токену. Зависимости заново не ставятся, пока не изменился lock-файл (кэш слоёв Docker), а при изменении докачиваются
+   только новые пакеты (хранилище pnpm в кэше BuildKit). Этот кэш удаляют `docker builder prune` и `docker system prune -a`.
 8. **Копия базы** (например, из cron): `docker compose exec -T db pg_dump -U space space | gzip > backup-$(date +%F).sql.gz`.
+
+### Автодеплой (GitHub Actions)
+
+Job `deploy` в `.github/workflows/ci.yml` после зелёных `check` и `docker` на `main` (push или ручной запуск) заходит на
+сервер по SSH и запускает `deploy/deploy.sh` с SHA проверенного коммита. Ключу деплоя на сервере разрешена только эта команда.
+Настройка один раз:
+
+1. Ключ без пароля (на любой машине): `ssh-keygen -t ed25519 -N "" -C github-actions-deploy -f deploy_key`.
+2. На сервере дописать в `~/.ssh/authorized_keys` пользователя, у которого лежит клон и есть доступ к Docker, одну строку
+   (путь - свой, публичный ключ - содержимое `deploy_key.pub`):
+
+   ```text
+   command="sh /home/<user>/space-card-game/deploy/deploy.sh",restrict ssh-ed25519 AAAA... github-actions-deploy
+   ```
+
+   `restrict` запрещает терминал и проброс портов. Клон должен делать `git fetch` без вопросов (deploy key GitHub или публичный
+   репозиторий по HTTPS).
+3. Отпечаток сервера: `ssh-keyscan -t ed25519 <ip>` (сверить с `ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub` на сервере).
+4. В GitHub: Settings -> Environments -> `production`, секреты `DEPLOY_HOST` (IP или домен), `DEPLOY_USER`, `DEPLOY_SSH_KEY`
+   (содержимое приватного `deploy_key`, после этого файл удалить) и `DEPLOY_KNOWN_HOSTS` (вывод `ssh-keyscan`). Затем
+   Settings -> Secrets and variables -> Actions -> Variables: `DEPLOY_ENABLED` = `true`.
+
+Пока `DEPLOY_ENABLED` не задана, job пропускается. Порт 22 должен быть открыт для всех адресов: у раннеров GitHub нет
+постоянных IP. На `main` новый запуск CI ждёт предыдущий, а не отменяет его, чтобы не оборвать деплой на середине.
 
 `apps/server/Dockerfile` сохраняет раскладку монорепозитория (`packages/*`, `apps/server`): Node запускает `.ts` напрямую и не
 снимает типы с файлов внутри `node_modules`, а workspace-пакеты - ссылки на `packages/*` с реальным путём вне `node_modules`.
