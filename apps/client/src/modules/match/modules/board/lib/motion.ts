@@ -29,12 +29,14 @@ export interface Motion {
   spawn: Map<string, SpawnHint>
   /** Куда улетает карта, пропадающая со стола (например, сброс, перемешанный в колоду). */
   exit: Map<string, Pose>
+  /** Карты, которые пропадают со стола, рассыпаясь в пыль на месте (утилизированный Исследователь: в куче утиля его нет). */
+  dust: Set<string>
   /** Задержка старта (в секундах) для карт, летящих «пачкой»: раздача по одной, а не всей рукой разом. */
   delay: Map<string, number>
 }
 
 export function emptyMotion(): Motion {
-  return { spawn: new Map(), exit: new Map(), delay: new Map() }
+  return { spawn: new Map(), exit: new Map(), dust: new Set(), delay: new Map() }
 }
 
 /** Шаг между картами одной пачки, секунды. */
@@ -92,9 +94,10 @@ export function motionFor(events: readonly GameEvent[], before: TableState): Mot
 
       case EVENT_TYPE.CARD_SCRAPPED: {
         const mine = sideOf(before, event.player) === SIDE.SELF
-        // Исследователь не распадается: он летит обратно в свою стопку.
+        // Исследователь в кучу утиля не попадает (возвращается в стопку, это считает стол), но на столе он рассыпается
+        // в пыль на месте, как любая утилизированная карта.
         if (event.card.cardId === EXPLORER_CARD_ID)
-          motion.exit.set(event.card.id, { ...explorersPose(layoutOf(before).trade), opacity: 0 })
+          motion.dust.add(event.card.id)
         else if (!mine && event.from === 'hand')
           motion.spawn.set(event.card.id, { from: opponentHandOrigin(), faceDown: true })
         // Карта из глубины сброса на столе не нарисована: она «достаётся» из стопки и распадается на месте.

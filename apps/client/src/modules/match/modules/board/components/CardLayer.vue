@@ -15,7 +15,7 @@ import type { CardNode, DragState, NavKey } from '../lib/nodes'
 import gsap from 'gsap'
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useCardDrag } from '../composables/useCardDrag'
-import { FADE_DURATION, FLIP_RATIO, flipOf, FLYING_Z, HOVER_DURATION, MOVE_DURATION, poseVars, shatter, spawnScrapped } from '../lib/card-fx'
+import { dissolveToDust, FADE_DURATION, FLIP_RATIO, flipOf, FLYING_Z, HOVER_DURATION, MOVE_DURATION, poseVars, spawnScrapped } from '../lib/card-fx'
 import { emptyMotion } from '../lib/motion'
 import { NODE_ZONE } from '../lib/nodes'
 import { TweenTracker } from '../lib/tween-tracker'
@@ -73,10 +73,10 @@ const drag = useCardDrag({
   onDrop: node => emit('drop', node),
 })
 
-function shatterCard(el: HTMLElement): void {
+function dissolveCard(el: HTMLElement): void {
   const fx = fxContext()
   if (fx)
-    shatter(el, fx)
+    dissolveToDust(el, fx)
 }
 
 function spawn(el: HTMLElement, node: CardNode): void {
@@ -135,9 +135,9 @@ function move(el: HTMLElement, node: CardNode, previous: Applied): void {
     return
   }
 
-  // Карта ушла в утиль: на месте, где она лежала, она распадается, а оригинал сразу переезжает в кучу невидимым.
+  // Карта ушла в утиль: на месте, где она лежала, она рассыпается в пыль, а оригинал сразу переезжает в кучу невидимым.
   if (node.zone === NODE_ZONE.SCRAP && previous.zone !== NODE_ZONE.SCRAP) {
-    shatterCard(el)
+    dissolveCard(el)
     // Мгновенный переезд: нулевой твин завершается при создании, ждать его в очереди нельзя (шаг завис бы до аварийного таймаута).
     gsap.to(el, { ...poseVars(node.pose), zIndex: node.pose.z, duration: 0, overwrite: 'auto' })
     return
@@ -213,6 +213,12 @@ function onLeave(el: Element, done: () => void): void {
   const key = (el as HTMLElement).dataset.key ?? ''
   const exit = motion.exit.get(key)
   if (snapNext) {
+    done()
+    return
+  }
+  // Утилизированная карта, которой нет в куче утиля (Исследователь): рассыпается в пыль на месте, сам элемент убираем сразу.
+  if (motion.dust.has(key)) {
+    dissolveCard(el as HTMLElement)
     done()
     return
   }

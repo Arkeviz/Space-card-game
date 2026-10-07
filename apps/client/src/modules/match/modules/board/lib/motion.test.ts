@@ -37,6 +37,18 @@ describe('motionFor', () => {
     expect(motion.spawn.size).toBe(0)
   })
 
+  it('утилизированный Исследователь рассыпается в пыль на месте: он не улетает и не плывёт в стопку', () => {
+    const events: GameEvent[] = [{ type: EVENT_TYPE.CARD_SCRAPPED, player: 0, card: { id: 'e1', cardId: 'explorer' }, from: 'play' }]
+    const motion = motionFor(events, table)
+    expect(motion.dust.has('e1')).toBe(true)
+    expect(motion.exit.has('e1')).toBe(false)
+  })
+
+  it('обычная утилизированная карта в пыль через уход со стола не рассыпается: она уезжает в кучу утиля', () => {
+    const events: GameEvent[] = [{ type: EVENT_TYPE.CARD_SCRAPPED, player: 0, card: card('s1'), from: 'play' }]
+    expect(motionFor(events, table).dust.size).toBe(0)
+  })
+
   it('новая карта торгового ряда вылетает из колоды рынка', () => {
     const motion = motionFor([{ type: EVENT_TYPE.TRADE_ROW_REFILLED, slot: 2, card: card('r') }], table)
     expect(motion.spawn.get('r')?.from).toEqual(tradeDeckPose(layoutOf(table).trade))

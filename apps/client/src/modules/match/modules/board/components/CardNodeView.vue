@@ -163,19 +163,6 @@ const scrapLabel = computed(() => (props.node.cardId ? `Утилизироват
   }
 }
 
-/* Копии для эффекта расщепления (CardLayer): вспышка по контуру и осколки, обрезанные по клеткам. */
-.node--flash {
-  background: radial-gradient(circle at 50% 50%, rgba(255, 236, 200, 0.95) 0%, rgba(255, 150, 80, 0.7) 60%, rgba(255, 90, 79, 0.5) 100%);
-  clip-path: polygon(16px 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%, 0 16px);
-  pointer-events: none;
-}
-
-.node--shard {
-  /* filter срабатывает до обрезки, поэтому тень осколку не нарисовать: вместо неё осколок раскаляется. */
-  filter: brightness(1.7) sepia(0.55) saturate(2.4);
-  pointer-events: none;
-}
-
 .node__face {
   position: absolute;
   inset: 0;
