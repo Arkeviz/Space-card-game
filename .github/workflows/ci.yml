@@ -76,12 +76,12 @@ jobs:
   #         cache-to: type=gha,scope=${{ matrix.image.name }},mode=max
 
   deploy:
-    # Выкладка на боевой сервер (deploy/deploy.sh по SSH). Включается переменной репозитория DEPLOY_ENABLED = true,
-    # секреты - в окружении production; настройка - apps/server/README.md, раздел «Автодеплой».
+    # Выкладка на боевой сервер (deploy/deploy.sh по SSH), секреты - в окружении production;
+    # настройка - apps/server/README.md, раздел «Автодеплой».
     needs: check
-    environment: production
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.DEPLOY_ENABLED == 'true'
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
+    environment: production
     timeout-minutes: 30
     steps:
       - name: Deploy
