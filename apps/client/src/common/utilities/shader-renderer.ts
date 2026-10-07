@@ -18,6 +18,11 @@ export interface ShaderRendererOptions {
   pixelRatio?: number
   /** Потолок частоты кадров. */
   frameRate?: number
+  /**
+   * Прозрачный холст: шейдер возвращает цвет с альфа-каналом, цвет предумножен на альфу (аддитивное свечение - цвет
+   * при нулевой альфе). Без флага холст непрозрачный.
+   */
+  transparent?: boolean
 }
 
 const MIN_PIXEL_RATIO = 0.25
@@ -36,7 +41,8 @@ void main() {
 
 // Заголовок идёт до пользовательского кода: его #define (у ShaderToy-шейдеров они часто называются brightness, speed)
 // не могут переименовать эти uniform-переменные.
-const FRAGMENT_HEADER = `#version 300 es
+function fragmentHeader(transparent: boolean): string {
+  return `#version 300 es
 precision highp float;
 precision highp int;
 
@@ -58,9 +64,10 @@ void main() {
   float peak = max(color.r, max(color.g, color.b));
   if (peak > 0.0)
     color.rgb *= min(peak * iBrightness, 1.0) / peak;
-  fragColor = vec4(color.rgb, 1.0);
+  fragColor = ${transparent ? 'color' : 'vec4(color.rgb, 1.0)'};
 }
 `
+}
 
 const clamp = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value))
 
@@ -80,6 +87,9 @@ interface Uniforms {
 export class ShaderRenderer {
   private readonly container: HTMLElement
   private readonly options: ShaderRendererOptions
+  /** Дополнительные float-uniform шейдера (setUniform) и найденные для них места в программе. */
+  private readonly floats = new Map<string, number>()
+  private readonly floatLocations = new Map<string, WebGLUniformLocation | null>()
   private readonly canvas = document.createElement('canvas')
   private readonly gl: WebGL2RenderingContext
   private readonly resizeObserver: ResizeObserver
@@ -103,7 +113,7 @@ export class ShaderRenderer {
   constructor(container: HTMLElement, options: ShaderRendererOptions) {
     this.container = container
     this.options = options
-    const gl = this.canvas.getContext('webgl2', { alpha: false, antialias: false, depth: false, stencil: false, powerPreference: 'high-performance' })
+    const gl = this.canvas.getContext('webgl2', { alpha: options.transparent ?? false, premultipliedAlpha: true, antialias: false, depth: false, stencil: false, powerPreference: 'high-performance' })
     if (!gl)
       throw new Error('WebGL 2 не поддерживается')
     this.gl = gl
@@ -142,7 +152,7 @@ export class ShaderRenderer {
   private build(): void {
     const { gl } = this
     const vertex = this.compile(gl.VERTEX_SHADER, VERTEX_SHADER)
-    const fragment = this.compile(gl.FRAGMENT_SHADER, FRAGMENT_HEADER + this.options.shaderCode)
+    const fragment = this.compile(gl.FRAGMENT_SHADER, fragmentHeader(this.options.transparent ?? false) + this.options.shaderCode)
     const program = gl.createProgram()
     gl.attachShader(program, vertex)
     gl.attachShader(program, fragment)
@@ -155,6 +165,7 @@ export class ShaderRenderer {
       throw new Error(`Программа шейдера не собрана: ${log}`)
     }
     this.program = program
+    this.floatLocations.clear()
     this.uniforms = {
       resolution: gl.getUniformLocation(program, 'iResolution'),
       time: gl.getUniformLocation(program, 'iTime'),
@@ -188,6 +199,11 @@ export class ShaderRenderer {
     gl.uniform1i(uniforms.frame, this.frame)
     gl.uniform4f(uniforms.mouse, 0, 0, 0, 0)
     gl.uniform1f(uniforms.brightness, this.brightness)
+    for (const [name, value] of this.floats) {
+      if (!this.floatLocations.has(name))
+        this.floatLocations.set(name, gl.getUniformLocation(program, name))
+      gl.uniform1f(this.floatLocations.get(name) ?? null, value)
+    }
     gl.drawArrays(gl.TRIANGLES, 0, 3)
   }
 
@@ -217,6 +233,13 @@ export class ShaderRenderer {
     this.playing = false
     cancelAnimationFrame(this.frameId)
     this.frameId = 0
+  }
+
+  /** Задаёт float-uniform, объявленный в коде шейдера; применяется со следующего кадра (на паузе - сразу). */
+  setUniform(name: string, value: number): void {
+    this.floats.set(name, value)
+    if (!this.playing)
+      this.render()
   }
 
   setBrightness(value: number): void {

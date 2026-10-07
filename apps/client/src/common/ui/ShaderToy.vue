@@ -20,12 +20,18 @@ const props = withDefaults(defineProps<{
   /** Потолок частоты кадров (1-60). */
   frameRate?: number
   paused?: boolean
+  /** Прозрачный холст (см. ShaderRendererOptions.transparent). */
+  transparent?: boolean
+  /** Дополнительные float-uniform, объявленные в коде шейдера. */
+  uniforms?: Record<string, number>
 }>(), {
   brightness: 1,
   speed: 1,
   pixelRatio: 1,
   frameRate: 60,
   paused: false,
+  transparent: false,
+  uniforms: () => ({}),
 })
 
 const emit = defineEmits<{
@@ -46,11 +52,17 @@ function updatePlayback(): void {
     renderer?.pause()
 }
 
+function applyUniforms(): void {
+  for (const [name, value] of Object.entries(props.uniforms))
+    renderer?.setUniform(name, value)
+}
+
 onMounted(() => {
   if (!container.value)
     return
   try {
     renderer = new ShaderRenderer(container.value, { ...props })
+    applyUniforms()
   }
   catch (error) {
     emit('error', error instanceof Error ? error.message : String(error))
@@ -69,6 +81,7 @@ watch(() => props.brightness, value => renderer?.setBrightness(value))
 watch(() => props.speed, value => renderer?.setSpeed(value))
 watch(() => props.pixelRatio, value => renderer?.setPixelRatio(value))
 watch(() => props.frameRate, value => renderer?.setFrameRate(value))
+watch(() => props.uniforms, applyUniforms, { deep: true })
 watch(shouldPlay, updatePlayback)
 </script>
 

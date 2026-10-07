@@ -69,7 +69,11 @@ export function parseSettings(raw: unknown): Settings {
  */
 export const REDUCED_MOTION_FACTOR = 20
 
+/** Нужны ли сокращённые анимации: так выбрал игрок или (в режиме «как в системе») так настроена система. */
+export function isReducedMotion(settings: Pick<Settings, 'animationMode'>, reducedBySystem: boolean): boolean {
+  return settings.animationMode === ANIMATION_MODE.REDUCED || (settings.animationMode === ANIMATION_MODE.SYSTEM && reducedBySystem)
+}
+
 export function motionFactor(settings: Pick<Settings, 'animationSpeed' | 'animationMode'>, reducedBySystem: boolean): number {
-  const reduced = settings.animationMode === ANIMATION_MODE.REDUCED || (settings.animationMode === ANIMATION_MODE.SYSTEM && reducedBySystem)
-  return settings.animationSpeed * (reduced ? REDUCED_MOTION_FACTOR : 1)
+  return settings.animationSpeed * (isReducedMotion(settings, reducedBySystem) ? REDUCED_MOTION_FACTOR : 1)
 }
