@@ -15,7 +15,7 @@ const section = computed(() => HELP_SECTIONS.find(item => item.id === chosen.val
 </script>
 
 <template>
-  <AppDialog title="Справка" eyebrow="ПРАВИЛА И УПРАВЛЕНИЕ" :width="1000" :max-height="900" closable :z-index="580" @close="$emit('close')">
+  <AppDialog title="Справка" eyebrow="ПРАВИЛА И УПРАВЛЕНИЕ" :width="1000" :max-height="900" anchor="top" closable :z-index="580" @close="$emit('close')">
     <template #toolbar>
       <ChipGroup v-model="chosen" label="Разделы справки" :options="options" />
     </template>

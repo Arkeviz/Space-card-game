@@ -18,6 +18,11 @@ const props = withDefaults(defineProps<{
   width?: number
   /** Максимальная высота окна; тело прокручивается, шапка и подвал остаются на месте. */
   maxHeight?: number
+  /**
+   * Положение по вертикали. `center` - по центру сцены, верх окна зависит от высоты содержимого. `top` - верхняя кромка
+   * там, где она у окна максимальной высоты, и не двигается при смене содержимого (окна с переключаемыми разделами).
+   */
+  anchor?: 'center' | 'top'
   /** Показывать крестик и закрывать по Esc. Обязательные запросы (prompt) закрыть нельзя. */
   closable?: boolean
   /** Закрывать по клику вне окна; по умолчанию - как closable. */
@@ -30,6 +35,7 @@ const props = withDefaults(defineProps<{
   eyebrow: undefined,
   width: 820,
   maxHeight: 980,
+  anchor: 'center',
   closable: false,
   closeOnClickOverlay: undefined,
   accent: 'cyan',
@@ -102,7 +108,7 @@ onBeforeUnmount(() => previousFocus?.focus())
 </script>
 
 <template>
-  <div ref="overlay" class="dialog-overlay" :style="{ zIndex }">
+  <div ref="overlay" class="dialog-overlay" :class="`dialog-overlay--${anchor}`" :style="{ zIndex, '--dialog-max-height': `${maxHeight}px` }">
     <section
       ref="panel"
       class="dialog"
@@ -154,6 +160,18 @@ onBeforeUnmount(() => previousFocus?.focus())
   align-items: center;
   justify-content: center;
   background: var(--c-scrim);
+}
+
+/* Колонкой, чтобы распорка сверху (половина свободной высоты при максимальной высоте окна) считалась от высоты сцены. */
+.dialog-overlay--top {
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+.dialog-overlay--top::before {
+  content: '';
+  flex: none;
+  height: calc((100% - var(--dialog-max-height)) / 2);
 }
 
 .dialog {
