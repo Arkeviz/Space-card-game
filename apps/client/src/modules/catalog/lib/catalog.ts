@@ -21,7 +21,7 @@ export const SET_LABEL: Readonly<Record<CardSet, string>> = {
 
 /** Допустимые размеры страницы каталога. */
 export const PAGE_SIZES = [10, 20, 50, 100] as const
-export const DEFAULT_PAGE_SIZE = 20
+export const DEFAULT_PAGE_SIZE = 50
 
 /** Пустой список в группе означает «без ограничения»; между группами условия складываются (И), внутри группы - ИЛИ. */
 export interface CatalogFilters {

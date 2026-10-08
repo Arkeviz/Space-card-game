@@ -21,7 +21,7 @@ const animated = inject(BACKDROP_ANIMATED_KEY, undefined)
 
 <template>
   <div class="backdrop space-backdrop" :class="{ 'backdrop--static': animated === false }">
-    <ShaderToy v-if="animated !== false" :shader-code="starNest" :brightness="0.3" :speed="0.02" :pixel-ratio="1.5" :frame-rate="frameRate" />
+    <ShaderToy v-if="animated !== false" :shader-code="starNest" :brightness="0.4" :speed="0.02" :pixel-ratio="1.5" :frame-rate="frameRate" />
   </div>
 </template>
 
