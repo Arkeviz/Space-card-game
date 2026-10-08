@@ -186,8 +186,19 @@ function submit(): void {
   justify-content: center;
   width: 620px;
   padding: 72px 56px 48px;
-  background: rgba(7, 12, 24, 0.67);
+  background: rgba(7, 12, 24, 0.78);
   box-shadow: inset 1px 0 0 rgba(79, 216, 255, 0.22);
+
+  /* Светлые облака шейдера под консолью приглушаются, а не просвечивают: иначе рамки и подписи на них не читаются. */
+  -webkit-backdrop-filter: blur(10px) brightness(0.55);
+  backdrop-filter: blur(10px) brightness(0.55);
+}
+
+/* Без поддержки backdrop-filter подложка просто плотнее. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .lobby__console {
+    background: rgba(7, 12, 24, 0.92);
+  }
 }
 
 .lobby__links {
@@ -210,7 +221,7 @@ function submit(): void {
   color: var(--c-text-quiet);
   font: 600 14px/1 var(--font-mono);
   letter-spacing: 0.14em;
-  box-shadow: inset 0 0 0 1px rgba(143, 163, 200, 0.4);
+  box-shadow: inset 0 0 0 1px rgba(143, 163, 200, 0.55);
   cursor: pointer;
 }
 
