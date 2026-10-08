@@ -104,12 +104,12 @@ const combatFx = computed(() => props.fx.filter(item => item.target === FX_TARGE
           <FxFloat :items="combatFx" />
         </span>
       </div>
-    </div>
 
-    <p :key="flashCount" class="hint" :class="{ 'hint--flash': flashCount > 0 }">
-      <AppIcon :name="hint.icon" :size="16" :style="{ color: hint.color }" />
-      <span>{{ hint.text }}</span>
-    </p>
+      <p :key="flashCount" class="hint" :class="{ 'hint--flash': flashCount > 0 }">
+        <AppIcon :name="hint.icon" :size="16" :style="{ color: hint.color }" />
+        <span>{{ hint.text }}</span>
+      </p>
+    </div>
 
     <button v-if="info.mine" type="button" class="play-all" aria-keyshortcuts="P" :disabled="playAllCount === 0" @click="$emit('playAll')">
       <span>РАЗЫГРАТЬ ВСЕ<template v-if="playAllCount > 0"> · {{ playAllCount }}</template></span>
@@ -135,9 +135,11 @@ const combatFx = computed(() => props.fx.filter(item => item.target === FX_TARGE
   display: flex;
   flex-direction: column;
   gap: 12px;
-  justify-content: center;
   width: 100%;
   height: 100%;
+
+  /* От верха слота, а не по центру: верх карточки хода не двигается, сколько бы кнопок и строк подсказки ни было (в свой ход и в ход соперника). */
+  padding-top: 33px;
 }
 
 .turn__card {
@@ -268,13 +270,19 @@ const combatFx = computed(() => props.fx.filter(item => item.target === FX_TARGE
   font-variant-numeric: tabular-nums;
 }
 
-/* Отступы с компенсирующими полями: текст на месте, а подсветка по клику на «Атаковать» получается с запасом вокруг. */
+/*
+ * Подсказка внутри блока пула, под разделителем. Поля компенсируют отступы, поэтому текст стоит на месте, а подсветка
+ * по клику на «Атаковать» получается с запасом вокруг. Минимальная высота - три строки: типичные подсказки не меняют
+ * высоту блока, и кнопки ниже не прыгают при смене текста.
+ */
 .hint {
   display: flex;
   align-items: flex-start;
   gap: 9px;
-  margin: -6px -8px;
-  padding: 6px 10px;
+  min-height: 68px;
+  margin: 4px -8px -6px;
+  padding: 10px 8px 6px;
+  border-top: 1px solid rgba(143, 163, 200, 0.16);
   color: var(--c-text-quiet);
   font: 400 13px/17px var(--font-text);
 }
