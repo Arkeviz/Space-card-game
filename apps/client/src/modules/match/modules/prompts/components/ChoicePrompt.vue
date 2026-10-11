@@ -80,7 +80,8 @@ onKeyStroke(['1', '2', '3', '4', '5', '6', '7', '8', '9'], (event) => {
       </button>
     </div>
 
-    <template #footer>
+    <!-- Таймера нет (учебная партия): и напоминать про него незачем. -->
+    <template v-if="deadline !== null" #footer>
       <span class="foot">Если время выйдет, сервер выберет первый вариант.</span>
     </template>
   </AppDialog>

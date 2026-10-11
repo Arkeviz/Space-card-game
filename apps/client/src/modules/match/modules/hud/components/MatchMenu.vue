@@ -4,6 +4,11 @@ import { nextTick, ref, useTemplateRef } from 'vue'
 import AppIcon from '@/common/ui/AppIcon.vue'
 import { ICON } from '@/common/ui/icons'
 
+defineProps<{
+  /** Учебная партия: вместо «Сдаться» - «Выйти из обучения». */
+  tutorial?: boolean
+}>()
+
 const emit = defineEmits<{
   concede: []
   settings: []
@@ -65,16 +70,16 @@ function confirm(): void {
         </button>
         <button type="button" class="menu__item menu__item--danger" role="menuitem" @click="confirming = true">
           <AppIcon :name="ICON.FLAG" :size="20" />
-          <span>Сдаться</span>
+          <span>{{ tutorial ? 'Выйти из обучения' : 'Сдаться' }}</span>
         </button>
       </template>
       <template v-else>
         <p class="menu__question" role="alertdialog" aria-label="Подтверждение">
-          Сдаться? Партия будет засчитана как поражение.
+          {{ tutorial ? 'Выйти из обучения? Партию придётся пройти заново.' : 'Сдаться? Партия будет засчитана как поражение.' }}
         </p>
         <div class="menu__actions">
           <button type="button" class="menu__item menu__item--danger" @click="confirm">
-            Да, сдаться
+            {{ tutorial ? 'Да, выйти' : 'Да, сдаться' }}
           </button>
           <button type="button" class="menu__item" @click="close">
             Отмена

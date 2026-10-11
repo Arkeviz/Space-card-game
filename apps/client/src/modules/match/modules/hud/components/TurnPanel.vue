@@ -7,6 +7,7 @@ import { useTick } from '@/common/composables/useTick'
 import AppIcon from '@/common/ui/AppIcon.vue'
 import { ICON } from '@/common/ui/icons'
 import { formatClock } from '@/common/utilities/clock'
+import { TOUR_ANCHOR, tourAnchor } from '@/common/utilities/tour-anchors'
 import { FX_TARGET } from '../lib/fx'
 import FxFloat from './FxFloat.vue'
 
@@ -84,7 +85,7 @@ const combatFx = computed(() => props.fx.filter(item => item.target === FX_TARGE
       </div>
     </div>
 
-    <div class="pools">
+    <div class="pools" v-bind="tourAnchor(TOUR_ANCHOR.POOLS)">
       <p class="pools__title">
         {{ poolsTitle }}
       </p>
@@ -111,19 +112,19 @@ const combatFx = computed(() => props.fx.filter(item => item.target === FX_TARGE
       </p>
     </div>
 
-    <button v-if="info.mine" type="button" class="play-all" aria-keyshortcuts="P" :disabled="playAllCount === 0" @click="$emit('playAll')">
+    <button v-if="info.mine" type="button" class="play-all" v-bind="tourAnchor(TOUR_ANCHOR.PLAY_ALL)" aria-keyshortcuts="P" :disabled="playAllCount === 0" @click="$emit('playAll')">
       <span>РАЗЫГРАТЬ ВСЕ<template v-if="playAllCount > 0"> · {{ playAllCount }}</template></span>
       <kbd class="key" aria-hidden="true">P</kbd>
     </button>
 
     <!-- Кнопка остаётся на месте и после разрушения базы: без атаки она просто неактивна. -->
-    <button v-if="info.mine" type="button" class="attack" aria-keyshortcuts="A" :aria-disabled="attackAmount === 0" @click="onAttack">
+    <button v-if="info.mine" type="button" class="attack" v-bind="tourAnchor(TOUR_ANCHOR.ATTACK)" aria-keyshortcuts="A" :aria-disabled="attackAmount === 0" @click="onAttack">
       <AppIcon :name="ICON.COMBAT" :size="16" :stroke="2.2" />
       <span>АТАКОВАТЬ<template v-if="attackAmount > 0"> · {{ attackAmount }}</template></span>
       <kbd class="key" aria-hidden="true">A</kbd>
     </button>
 
-    <button type="button" class="end" aria-keyshortcuts="E" :disabled="!canEndTurn" @click="$emit('endTurn')">
+    <button type="button" class="end" v-bind="tourAnchor(TOUR_ANCHOR.END_TURN)" aria-keyshortcuts="E" :disabled="!canEndTurn" @click="$emit('endTurn')">
       <span>{{ info.mine ? 'КОНЕЦ ХОДА' : 'ХОД СОПЕРНИКА' }}</span>
       <kbd v-if="info.mine" class="key key--end" aria-hidden="true">E</kbd>
     </button>

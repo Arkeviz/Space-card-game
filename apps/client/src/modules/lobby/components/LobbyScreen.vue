@@ -20,6 +20,7 @@ const emit = defineEmits<{
   quick: []
   create: []
   join: [code: string]
+  tutorial: []
   catalog: []
   settings: []
   help: []
@@ -127,6 +128,10 @@ function submit(): void {
         </div>
 
         <div class="lobby__links">
+          <button type="button" class="lobby__link lobby__link--accent" @click="emit('tutorial')">
+            <AppIcon :name="ICON.SHIP" :size="18" :stroke="1.8" />
+            <span>ОБУЧЕНИЕ</span>
+          </button>
           <button type="button" class="lobby__link" @click="emit('catalog')">
             <AppIcon :name="ICON.COPY" :size="18" :stroke="1.8" />
             <span>КАТАЛОГ КАРТ</span>
@@ -223,6 +228,11 @@ function submit(): void {
   letter-spacing: 0.14em;
   box-shadow: inset 0 0 0 1px rgba(143, 163, 200, 0.55);
   cursor: pointer;
+}
+
+.lobby__link--accent {
+  color: var(--c-me);
+  box-shadow: inset 0 0 0 1px rgba(79, 216, 255, 0.55);
 }
 
 .lobby__link:hover {

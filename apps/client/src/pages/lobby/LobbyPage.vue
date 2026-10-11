@@ -62,6 +62,7 @@ function cancelWaiting(): void {
     @quick="connection.findMatch(playerName())"
     @create="connection.createMatch(playerName())"
     @join="connection.joinMatch($event, playerName())"
+    @tutorial="router.push('/tutorial')"
     @catalog="router.push('/cards')"
     @settings="settingsOpen = true"
     @help="helpOpen = true"

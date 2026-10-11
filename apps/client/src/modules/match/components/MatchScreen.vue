@@ -14,6 +14,7 @@ import { storeToRefs } from 'pinia'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 import SpaceBackdrop from '@/common/ui/SpaceBackdrop.vue'
 import StageScaler from '@/common/ui/StageScaler.vue'
+import { DIALOG_SELECTOR } from '@/common/utilities/tour-anchors'
 import { HelpDialog } from '@/modules/help'
 import { motionFactor, SettingsDialog, useSettings } from '@/modules/settings'
 import { Board, NODE_GROUP, PILE_ID } from '../modules/board'
@@ -21,7 +22,7 @@ import { EndTurnDialog, GameOverScreen, HudLayer, itemsFromCards, itemsFromConte
 import { PromptHost } from '../modules/prompts'
 import { useMatchStore } from '../store/match-store'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   transport: MatchTransport
   /** Есть ли связь с сервером (для индикатора «В СЕТИ»). */
   online: boolean
@@ -35,7 +36,11 @@ const props = defineProps<{
   endReason: EndReason | null
   /** Предложения реванша после конца партии. */
   rematch: RematchStatus
-}>()
+  /** Учебная партия: «сдаться» в меню превращается в «выйти из обучения». */
+  tutorial?: boolean
+}>(), {
+  tutorial: false,
+})
 
 const emit = defineEmits<{
   leave: []
@@ -100,6 +105,14 @@ watch(() => table.value?.winner, () => {
   hideGameOver.value = false
 })
 
+/** В обучении сдаваться не от кого: пункт меню просто выводит из учебной партии. */
+function concede(): void {
+  if (props.tutorial)
+    emit('leave')
+  else
+    run({ type: COMMAND_TYPE.CONCEDE })
+}
+
 function run(command: Command): void {
   store.submit(command)
 }
@@ -122,6 +135,10 @@ function requestEndTurn(): void {
 const settingsOpen = ref(false)
 const helpOpen = ref(false)
 
+/** Открыто окно, которое закрывает стол (настройки, справка, стопка, предупреждение): подсказки обучения на это время прячутся. */
+const dialogOpen = computed(() => settingsOpen.value || helpOpen.value || viewedPile.value !== null || endTurnWarning.value !== null)
+defineExpose({ busy, dialogOpen })
+
 /*
  * Горячие клавиши: ? и F1 - справка; P - разыграть все, A - атаковать, E - конец хода (их можно выключить в
  * настройках). Ход работает по физическому положению клавиши (code), поэтому не зависит от раскладки.
@@ -133,7 +150,7 @@ useEventListener(window, 'keydown', (event: KeyboardEvent) => {
   const target = event.target
   if (target instanceof HTMLElement && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)))
     return
-  if (document.querySelector('[role="dialog"]'))
+  if (document.querySelector(DIALOG_SELECTOR))
     return
   if (event.key === '?' || event.code === 'F1') {
     helpOpen.value = true
@@ -203,10 +220,11 @@ watch(pending, () => {
         :opponent-return-deadline="opponentReturnDeadline"
         :play-all-count="store.playingAll ? 0 : store.playableCount"
         :finished="gameOver !== null"
+        :tutorial="tutorial"
         @attack="attackPlayer"
         @end-turn="requestEndTurn"
         @play-all="store.playAll()"
-        @concede="run({ type: COMMAND_TYPE.CONCEDE })"
+        @concede="concede"
         @settings="settingsOpen = true"
         @help="helpOpen = true"
         @leave="emit('leave')"
@@ -265,6 +283,9 @@ watch(pending, () => {
       <p v-if="toast" class="match__toast" role="alert">
         {{ toast }}
       </p>
+
+      <!-- Слой поверх экрана матча в координатах сцены: сюда встаёт тур обучения. -->
+      <slot />
     </div>
   </StageScaler>
 </template>

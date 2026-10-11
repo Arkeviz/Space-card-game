@@ -12,8 +12,8 @@ import { motionFor } from '../modules/board'
 import { BANNER_LIFETIME_MS, describeStep, FX_LIFETIME_MS } from '../modules/hud'
 import { buildTable, discardLimit, indexLegalActions, nextCardToPlay } from '../modules/table'
 
-/** Результат отправки команды. reason - код ошибки движка или 'connection-lost'. */
-export type CommandOutcome = { ok: true } | { ok: false, reason: CommandError | 'connection-lost' }
+/** Результат отправки команды. reason - код ошибки движка, 'connection-lost' (нет связи) или 'not-allowed' (команда не принята по правилам окружения, например обучения). */
+export type CommandOutcome = { ok: true } | { ok: false, reason: CommandError | 'connection-lost' | 'not-allowed' }
 
 /**
  * Всё, что экрану матча нужно от подключения. Передаётся снаружи (IoC): модуль match не знает ни о WebSocket,
@@ -27,7 +27,7 @@ export interface MatchTransport {
   submitCommand: (command: Command) => Promise<CommandOutcome>
 }
 
-const ERROR_TEXT: Record<CommandError | 'connection-lost', string> = {
+const ERROR_TEXT: Record<CommandError | 'connection-lost' | 'not-allowed', string> = {
   [COMMAND_ERROR.GAME_OVER]: 'Партия уже окончена.',
   [COMMAND_ERROR.NOT_YOUR_TURN]: 'Сейчас не ваш ход.',
   [COMMAND_ERROR.PROMPT_PENDING]: 'Сначала нужно ответить на запрос.',
@@ -42,6 +42,7 @@ const ERROR_TEXT: Record<CommandError | 'connection-lost', string> = {
   [COMMAND_ERROR.OUTPOST_BLOCKS]: 'Сначала нужно уничтожить аванпост.',
   [COMMAND_ERROR.INSUFFICIENT_COMBAT]: 'Не хватает атаки.',
   'connection-lost': 'Связь с сервером потеряна. Команда не отправлена.',
+  'not-allowed': 'Сейчас это действие недоступно.',
 }
 
 const TOAST_LIFETIME_MS = 3500

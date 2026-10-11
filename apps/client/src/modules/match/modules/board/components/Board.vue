@@ -13,8 +13,9 @@ import { CARD_KIND, COMMAND_TYPE, getCard } from '@space/engine'
 import { computed, ref, useTemplateRef } from 'vue'
 import AppIcon from '@/common/ui/AppIcon.vue'
 import { ICON } from '@/common/ui/icons'
+import { TOUR_ANCHOR, tourAnchor } from '@/common/utilities/tour-anchors'
 import { CARD_FORM, CARD_SIZE, cardName, CardView } from '@/modules/cards'
-import { STAGE } from '../../../lib/rects'
+import { RECT, rectStyle, STAGE } from '../../../lib/rects'
 import { useBoardFocus } from '../composables/useBoardFocus'
 import {
   DROP_ZONE,
@@ -157,6 +158,16 @@ defineExpose({
 
 <template>
   <div class="board">
+    <!-- Невидимые якоря для подсказок обучения: места, где нет отдельного элемента (рука, ряд карт, колода со сбросом). -->
+    <div class="board__anchor" v-bind="tourAnchor(TOUR_ANCHOR.HAND)" :style="rectStyle(RECT.SELF_HAND)" aria-hidden="true" />
+    <div class="board__anchor" v-bind="tourAnchor(TOUR_ANCHOR.SELF_PILES)" :style="rectStyle(RECT.SELF_PILES)" aria-hidden="true" />
+    <div
+      class="board__anchor board__anchor--row"
+      v-bind="tourAnchor(TOUR_ANCHOR.TRADE_ROW)"
+      :style="{ left: `${trade.dividerLeftX}px`, width: `${trade.dividerRightX - trade.dividerLeftX}px`, top: `${trade.dividerTop}px`, height: `${trade.dividerH}px` }"
+      aria-hidden="true"
+    />
+
     <!-- Торговый ряд -->
     <div
       class="board__trade-band"
@@ -180,6 +191,7 @@ defineExpose({
 
     <PileStack
       v-if="table.explorersCount > 0"
+      v-bind="tourAnchor(TOUR_ANCHOR.EXPLORERS)"
       :x="trade.explorersX"
       :y="trade.cardY"
       :scale="SCALE.TRADE"
@@ -210,14 +222,14 @@ defineExpose({
     </button>
 
     <!-- Поля игроков -->
-    <section class="board__field board__field--opponent" aria-label="Поле соперника" :style="opponentField.style">
+    <section class="board__field board__field--opponent" v-bind="tourAnchor(TOUR_ANCHOR.OPPONENT_FIELD)" aria-label="Поле соперника" :style="opponentField.style">
       <span class="board__field-label" style="left: 12px">БАЗЫ</span>
       <template v-if="!opponentField.compact">
         <span class="board__field-line" :style="{ left: opponentField.dividerLeft ?? undefined }" />
         <span class="board__field-label" :style="{ left: opponentField.shipsLabelLeft ?? undefined }">КОРАБЛИ</span>
       </template>
     </section>
-    <section class="board__field board__field--self" aria-label="Ваше поле" :style="selfField.style">
+    <section class="board__field board__field--self" v-bind="tourAnchor(TOUR_ANCHOR.SELF_FIELD)" aria-label="Ваше поле" :style="selfField.style">
       <span class="board__field-label" style="left: 12px">БАЗЫ</span>
       <template v-if="!selfField.compact">
         <span class="board__field-line" :style="{ left: selfField.dividerLeft ?? undefined }" />
@@ -310,6 +322,14 @@ defineExpose({
 }
 
 /* Поля и торговый ряд меняют высоту при смене хода: подложки плавно подстраиваются, как и сами карты. */
+.board__anchor {
+  pointer-events: none;
+}
+
+.board__anchor--row {
+  transition: top 0.55s, height 0.55s;
+}
+
 .board__trade-band {
   right: 0;
   left: 0;

@@ -5,6 +5,7 @@ export const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     { path: '/', name: 'lobby', component: () => import('@/pages/lobby/LobbyPage.vue') },
+    { path: '/tutorial', name: 'tutorial', component: () => import('@/pages/tutorial/TutorialPage.vue') },
     { path: '/cards', name: 'cards', component: () => import('@/pages/catalog/CatalogPage.vue') },
     { path: '/match/:id', name: 'match', component: () => import('@/pages/match/MatchPage.vue') },
   ],

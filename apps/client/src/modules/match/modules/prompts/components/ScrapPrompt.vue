@@ -115,7 +115,7 @@ const order = computed(() => sections.value.flatMap(section => section.cards.map
     </div>
 
     <template #footer>
-      <p class="note">
+      <p v-if="deadline !== null" class="note">
         <AppIcon :name="ICON.CLOCK" :size="14" />
         <span>{{ optional ? 'Если время выйдет, утилизация будет пропущена.' : 'Если время выйдет, сервер выберет первую карту.' }}</span>
       </p>

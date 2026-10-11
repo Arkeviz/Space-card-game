@@ -8,6 +8,7 @@ import type { LogEntry } from '../lib/describe'
 import type { FxItem, TurnBanner } from '../lib/fx'
 import { CARD_KIND, getCard } from '@space/engine'
 import { computed } from 'vue'
+import { TOUR_ANCHOR, tourAnchor } from '@/common/utilities/tour-anchors'
 import { RECT, rectStyle } from '../../../lib/rects'
 import { FX_TARGET } from '../lib/fx'
 import { hintFor, turnInfo } from '../lib/turn-info'
@@ -37,6 +38,8 @@ const props = defineProps<{
   playAllCount: number
   /** Матч закончился: рядом с меню появляется кнопка «в главное меню». */
   finished: boolean
+  /** Учебная партия: меню предлагает выйти из обучения, а не сдаться. */
+  tutorial?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -75,7 +78,7 @@ const hint = computed(() => hintFor(props.table, props.legal))
 
 <template>
   <div class="hud">
-    <div class="hud__slot" :style="rectStyle(RECT.OPP_PANEL)">
+    <div class="hud__slot" v-bind="tourAnchor(TOUR_ANCHOR.OPPONENT_PANEL)" :style="rectStyle(RECT.OPP_PANEL)">
       <OpponentPanel
         :name="opponentName"
         :authority="table.opponent.authority"
@@ -89,11 +92,11 @@ const hint = computed(() => hintFor(props.table, props.legal))
       />
     </div>
 
-    <div class="hud__slot" :style="rectStyle(RECT.LOG)">
+    <div class="hud__slot" v-bind="tourAnchor(TOUR_ANCHOR.LOG)" :style="rectStyle(RECT.LOG)">
       <GameLog :entries="log" />
     </div>
 
-    <div class="hud__slot" :style="rectStyle(RECT.TURN)">
+    <div class="hud__slot" v-bind="tourAnchor(TOUR_ANCHOR.TURN_PANEL)" :style="rectStyle(RECT.TURN)">
       <TurnPanel
         :turn="table.turn"
         :info="info"
@@ -111,7 +114,7 @@ const hint = computed(() => hintFor(props.table, props.legal))
       />
     </div>
 
-    <div class="hud__slot" :style="rectStyle(RECT.SELF_PANEL)">
+    <div class="hud__slot" v-bind="tourAnchor(TOUR_ANCHOR.SELF_PANEL)" :style="rectStyle(RECT.SELF_PANEL)">
       <SelfPanel :name="selfName" :authority="table.self.authority" :active="mine" :online="online" :fx="selfFx" />
     </div>
 
@@ -120,7 +123,7 @@ const hint = computed(() => hintFor(props.table, props.legal))
     </div>
 
     <div class="hud__menu" :style="menuStyle">
-      <MatchMenu @concede="emit('concede')" @settings="emit('settings')" @help="emit('help')" />
+      <MatchMenu :tutorial="tutorial" @concede="emit('concede')" @settings="emit('settings')" @help="emit('help')" />
     </div>
 
     <TurnBannerView :banner="banner" />
