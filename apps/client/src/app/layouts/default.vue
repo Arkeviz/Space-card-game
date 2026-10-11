@@ -8,6 +8,7 @@ import AppVersion from '@/common/ui/AppVersion.vue'
 import { BACKDROP_ANIMATED_KEY } from '@/common/ui/backdrop-animation'
 import PortalOverlay from '@/common/ui/PortalOverlay.vue'
 import { collapsePage, openPortal, resetPage, showPortal } from '@/common/utilities/portal-transition'
+import { AppUpdateNotice } from '@/modules/app-update'
 import { useGameConnection } from '@/modules/connection'
 import { isReducedMotion, useSettings } from '@/modules/settings'
 
@@ -114,6 +115,7 @@ async function onEnter(el: Element, done: () => void): Promise<void> {
   <PortalOverlay ref="portal" :active="portalActive" :names="names" @error="portalBroken = true" />
   <AppTooltip />
   <AppVersion v-if="showVersion" />
+  <AppUpdateNotice />
 </template>
 
 <style scoped>
